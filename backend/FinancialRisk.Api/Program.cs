@@ -37,8 +37,6 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
-app.Urls.Add("http://localhost:5290");
-app.Urls.Add("https://localhost:7291");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
