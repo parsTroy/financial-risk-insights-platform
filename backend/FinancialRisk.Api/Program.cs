@@ -2,6 +2,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddControllers(); // Add this line to register controllers
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -12,7 +13,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
+
+// Add this line to enable controller routing
+app.MapControllers();
 
 var summaries = new[]
 {
@@ -33,6 +37,8 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
+app.Urls.Add("http://localhost:5290");
+app.Urls.Add("https://localhost:7291");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
