@@ -17,8 +17,24 @@ namespace FinancialRisk.Tests
 
             // Assert
             Assert.NotNull(result);
-            dynamic value = result!.Value!;
-            Assert.Equal("OK", (string)value.status);
+            Assert.Equal(200, result!.StatusCode);
+            
+            // Check that the result contains the expected data structure
+            var response = result.Value;
+            Assert.NotNull(response);
+            
+            // Use reflection to check properties (more reliable than dynamic)
+            var statusProperty = response.GetType().GetProperty("status");
+            var timestampProperty = response.GetType().GetProperty("timestamp");
+            
+            Assert.NotNull(statusProperty);
+            Assert.NotNull(timestampProperty);
+            
+            var statusValue = statusProperty.GetValue(response);
+            var timestampValue = timestampProperty.GetValue(response);
+            
+            Assert.Equal("OK", statusValue);
+            Assert.NotNull(timestampValue);
         }
     }
 }
