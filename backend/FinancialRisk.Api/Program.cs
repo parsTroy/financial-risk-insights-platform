@@ -1,5 +1,8 @@
 using dotenv.net;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using FinancialRisk.Api.Data;
+using FinancialRisk.Api.Services;
 
 // Load environment variables from .env file
 DotEnv.Load();
@@ -13,6 +16,10 @@ builder.Configuration.AddEnvironmentVariables();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddControllers(); // Add this line to register controllers
 builder.Services.AddOpenApi();
+
+// Add Entity Framework Core with PostgreSQL
+builder.Services.AddDbContext<FinancialRiskDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configure financial API settings with environment variable support
 builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options =>
@@ -30,6 +37,9 @@ builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService,
 // Register financial data service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
+// Register data seeder service
+builder.Services.AddScoped<DataSeederService>();
+
 var app = builder.Build();
 
 // Log configuration to verify environment variables are loaded
@@ -41,6 +51,23 @@ logger.LogInformation("  Base URL: {BaseUrl}", config.Value.BaseUrl);
 logger.LogInformation("  Timeout: {Timeout}s", config.Value.RequestTimeoutSeconds);
 logger.LogInformation("  Rate Limit: {RateLimit}/min", config.Value.MaxRequestsPerMinute);
 logger.LogInformation("  API Key: {ApiKey}", string.IsNullOrEmpty(config.Value.ApiKey) ? "NOT SET" : "SET (length: " + config.Value.ApiKey.Length + ")");
+
+// Ensure database is created and seeded
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<FinancialRiskDbContext>();
+    var seeder = scope.ServiceProvider.GetRequiredService<DataSeederService>();
+    
+    try
+    {
+        // Seed data (this will also ensure database is created)
+        await seeder.SeedDataAsync();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while creating/seeding the PostgreSQL database");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

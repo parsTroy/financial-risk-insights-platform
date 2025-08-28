@@ -1,142 +1,233 @@
-# Financial Risk Insights Platform - Backend
+# Financial Risk Insights Platform - Backend API
 
-## Financial Data API Integration
+This is the backend API for the Financial Risk Insights Platform, built with ASP.NET Core 9.0, Entity Framework Core, and **PostgreSQL** for optimal financial data handling.
 
-This backend integrates with Alpha Vantage API to provide real-time financial data including stock quotes, forex rates, and historical data.
+## 🚀 Features
 
-## Setup Instructions
+- **Asset Management**: CRUD operations for financial assets (stocks, ETFs, bonds)
+- **Price Data**: Historical price data storage with precise decimal precision
+- **Portfolio Management**: Create and manage investment portfolios
+- **Portfolio Performance**: Calculate portfolio returns and performance metrics
+- **Data Seeding**: Automatic population with sample financial data
+- **PostgreSQL Optimized**: Built for financial applications with NUMERIC precision
 
-### 1. Get Alpha Vantage API Key
+## 🛠️ Prerequisites
 
-1. Visit [Alpha Vantage](https://www.alphavantage.co/support/#api-key)
-2. Sign up for a free account
-3. Get your API key (free tier allows 5 API calls per minute)
+- .NET 9.0 SDK
+- **PostgreSQL 15** (or Docker for containerized setup)
+- Visual Studio 2022 or VS Code
 
-### 2. Configure Environment Variables
+## 📦 Installation & Setup
 
-#### Option A: Using .env file (Recommended)
+### 🐳 **Option 1: Docker (Recommended)**
 
-1. Copy the example environment file:
+1. **Start PostgreSQL Container**
    ```bash
-   cp env.example .env
+   # From project root
+   docker-compose up -d postgres
    ```
 
-2. Edit the `.env` file and add your API key:
+2. **Verify Connection**
    ```bash
-   # Financial API Configuration
-   ALPHA_VANTAGE_API_KEY=your_actual_api_key_here
-   FINANCIAL_API_BASE_URL=https://www.alphavantage.co/
-   FINANCIAL_API_TIMEOUT_SECONDS=30
-   FINANCIAL_API_MAX_REQUESTS_PER_MINUTE=5
-   FINANCIAL_API_PROVIDER=AlphaVantage
+   docker ps
+   # Should show financial-risk-postgres running on port 5432
    ```
 
-#### Option B: Environment Variables
+### 💻 **Option 2: Local PostgreSQL**
 
-You can also set the API key via environment variables:
-
+#### macOS
 ```bash
-export ALPHA_VANTAGE_API_KEY="your_api_key"
-export FINANCIAL_API_BASE_URL="https://www.alphavantage.co/"
-export FINANCIAL_API_TIMEOUT_SECONDS="30"
-export FINANCIAL_API_MAX_REQUESTS_PER_MINUTE="5"
-export FINANCIAL_API_PROVIDER="AlphaVantage"
+brew install postgresql@15
+brew services start postgresql@15
+createdb FinancialRiskDb
 ```
 
-### 3. Security Notes
+#### Windows
+- Download from https://www.postgresql.org/download/windows/
+- Install with default settings
+- Create database `FinancialRiskDb`
+- Set postgres user password to `postgres`
 
-- **Never commit your `.env` file** to version control
-- The `.env` file is already in `.gitignore`
-- Use different API keys for development, staging, and production
-- Rotate your API keys regularly
-
-## Available Endpoints
-
-### Stock Data
-- `GET /api/financialdata/stock/{symbol}` - Get current stock quote
-- `GET /api/financialdata/stock/{symbol}/history?days=30` - Get stock history
-- `GET /api/financialdata/stock/{symbol}/price` - Get current price only
-
-### Forex Data
-- `GET /api/financialdata/forex/{fromCurrency}/{toCurrency}` - Get exchange rate
-
-## Example Usage
-
+#### Linux
 ```bash
-# Get Apple stock quote
-curl "http://localhost:5290/api/financialdata/stock/AAPL"
-
-# Get USD to EUR exchange rate
-curl "http://localhost:5290/api/financialdata/forex/USD/EUR"
-
-# Get 30 days of Microsoft stock history
-curl "http://localhost:5290/api/financialdata/stock/MSFT/history?days=30"
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo -u postgres createdb FinancialRiskDb
 ```
 
-## Features
-
-- **Environment Variables**: Secure .env file support
-- **Rate Limiting**: Respects Alpha Vantage's 5 requests/minute limit
-- **Error Handling**: Comprehensive error handling with detailed logging
-- **Async Operations**: Non-blocking API calls
-- **Configuration**: Environment-based configuration
-- **Logging**: Structured logging for monitoring and debugging
-- **Type Safety**: Strongly typed models and responses
-
-## Rate Limiting
-
-The service automatically enforces rate limiting to comply with Alpha Vantage's free tier limits:
-- Maximum 5 requests per minute
-- Automatic queuing and waiting when limit is reached
-- Configurable limits via environment variables
-
-## Error Handling
-
-The API returns structured error responses:
-
-```json
-{
-  "success": false,
-  "data": null,
-  "errorMessage": "API request failed with status 429",
-  "statusCode": 429
-}
-```
-
-## Logging
-
-All API calls are logged with structured logging:
-- Request details (symbol, currency pairs)
-- Response status and timing
-- Error details with stack traces
-- Rate limiting information
-
-## Testing
-
-Run the tests to verify the implementation:
-
+### 3. **Install Dependencies**
 ```bash
-dotnet test ./backend/FinancialRisk.sln
+cd backend/FinancialRisk.Api
+dotnet restore
 ```
 
-## Dependencies
+### 4. **Run the Application**
+```bash
+dotnet run
+```
 
-- .NET 9.0
-- dotenv.net (for .env file support)
-- Microsoft.AspNetCore.OpenApi
-- System.Text.Json (built-in)
-- Microsoft.Extensions.Logging (built-in)
-- Microsoft.Extensions.Options (built-in)
-- Microsoft.Extensions.Http (built-in)
+The API will be available at `https://localhost:5001` or `http://localhost:5000`.
 
-## Troubleshooting
+## 🗄️ Database Schema
 
-### Common Issues
+### **Why PostgreSQL for Finance?**
 
-1. **API Key Not Found**: Ensure your `.env` file exists and contains `ALPHA_VANTAGE_API_KEY`
-2. **Rate Limiting**: Free tier allows only 5 requests per minute
-3. **Invalid Symbol**: Check that stock symbols are valid (e.g., AAPL, MSFT, GOOGL)
+- **NUMERIC(18,6)**: Exact decimal precision for financial calculations
+- **JSON Support**: Store complex financial data structures
+- **Analytical Performance**: Excellent for complex financial queries
+- **ACID Compliance**: Critical for financial transaction integrity
 
-### Debug Environment Variables
+### Tables Structure
+```
+Assets
+├── Id (SERIAL PRIMARY KEY)
+├── Symbol (VARCHAR(10) UNIQUE)
+├── Name (VARCHAR(100))
+├── Sector (VARCHAR(50))
+├── Industry (VARCHAR(50))
+├── AssetType (VARCHAR(50))
+├── CreatedAt (TIMESTAMP)
+└── UpdatedAt (TIMESTAMP)
 
-To verify your environment variables are loaded correctly, check the logs when the application starts.
+Prices
+├── Id (SERIAL PRIMARY KEY)
+├── AssetId (INT REFERENCES Assets)
+├── Date (DATE)
+├── Open (NUMERIC(18,6))
+├── High (NUMERIC(18,6))
+├── Low (NUMERIC(18,6))
+├── Close (NUMERIC(18,6))
+├── AdjustedClose (NUMERIC(18,6))
+├── Volume (BIGINT)
+└── CreatedAt (TIMESTAMP)
+
+Portfolios
+├── Id (SERIAL PRIMARY KEY)
+├── Name (VARCHAR(100))
+├── Description (VARCHAR(500))
+├── Strategy (VARCHAR(50))
+├── TargetReturn (NUMERIC(18,6))
+├── MaxRisk (NUMERIC(18,6))
+├── CreatedAt (TIMESTAMP)
+├── UpdatedAt (TIMESTAMP)
+└── IsActive (BOOLEAN)
+
+PortfolioHoldings
+├── PortfolioId (INT REFERENCES Portfolios)
+├── AssetId (INT REFERENCES Assets)
+├── Weight (NUMERIC(18,6))
+├── Quantity (NUMERIC(18,6))
+├── AverageCost (NUMERIC(18,6))
+├── CreatedAt (TIMESTAMP)
+└── UpdatedAt (TIMESTAMP)
+```
+
+## 🔌 API Endpoints
+
+### Assets
+- `GET /api/Assets` - List all assets
+- `GET /api/Assets/{id}` - Get asset by ID
+- `GET /api/Assets/symbol/{symbol}` - Get asset by symbol
+- `GET /api/Assets/{id}/prices` - Get price history
+- `POST /api/Assets` - Create new asset
+- `PUT /api/Assets/{id}` - Update asset
+- `DELETE /api/Assets/{id}` - Delete asset
+
+### Portfolios
+- `GET /api/Portfolios` - List all portfolios
+- `GET /api/Portfolios/{id}` - Get portfolio details
+- `GET /api/Portfolios/{id}/performance` - Calculate performance
+- `POST /api/Portfolios` - Create portfolio
+- `PUT /api/Portfolios/{id}` - Update portfolio
+- `DELETE /api/Portfolios/{id}` - Delete portfolio
+
+### Portfolio Holdings
+- `POST /api/Portfolios/{id}/holdings` - Add asset to portfolio
+- `PUT /api/Portfolios/{id}/holdings/{assetId}` - Update holding
+- `DELETE /api/Portfolios/{id}/holdings/{assetId}` - Remove holding
+
+## 🌱 Sample Data
+
+The application automatically seeds the database with:
+
+- **14 Assets**: Major stocks (AAPL, MSFT, GOOGL, NVDA) and ETFs (SPY, QQQ, IEF, GLD)
+- **2 Years of Price Data**: Daily OHLCV data with realistic volatility
+- **3 Sample Portfolios**: Conservative, Balanced, and Aggressive strategies
+- **Portfolio Allocations**: Realistic weightings based on risk strategy
+
+## 🧪 Testing
+
+### Run Tests
+```bash
+cd backend/FinancialRisk.Tests
+dotnet test
+```
+
+### Test Database
+Tests use separate PostgreSQL databases to avoid conflicts:
+- `FinancialRiskTestDb1` through `FinancialRiskTestDb6`
+- Each test gets its own isolated database
+
+## 🔧 Development
+
+### Adding New Entities
+1. Create entity class in `Models/`
+2. Add DbSet to `FinancialRiskDbContext`
+3. Configure in `OnModelCreating`
+4. Add to `DataSeederService` if needed
+5. Create controller for API endpoints
+
+### Database Migrations
+Currently using `EnsureCreated()` for simplicity. For production:
+```bash
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
+
+## 📊 Performance Features
+
+- **Indexes**: On symbol and date combinations
+- **Eager Loading**: Include() for related data
+- **NUMERIC Precision**: Exact financial calculations
+- **Composite Keys**: Efficient portfolio holdings
+- **Cascade Delete**: Automatic cleanup
+
+## 🚨 Error Handling
+
+- Comprehensive try-catch blocks
+- Structured logging
+- Proper HTTP status codes
+- Input validation with Data Annotations
+
+## 🔐 Security Considerations
+
+- Input validation on all endpoints
+- SQL injection protection via EF Core
+- Proper HTTP status codes
+- Audit logging
+
+## 🚀 Next Steps
+
+1. **Authentication**: Add user management and authorization
+2. **Real-time Data**: Integrate live financial data feeds
+3. **Risk Metrics**: Implement VaR, Sharpe ratio, correlation analysis
+4. **Portfolio Optimization**: Add Markowitz optimization algorithms
+5. **Frontend Integration**: Connect with Blazor components
+
+## 📞 Support
+
+For issues or questions:
+- Check the `SETUP_POSTGRESQL.md` for detailed setup instructions
+- Review the Docker Compose configuration
+- Check application logs for error details
+
+## 🎯 Success Indicators
+
+✅ **PostgreSQL Running**: Database accessible on port 5432
+✅ **Application Starts**: No connection errors
+✅ **Tables Created**: All 4 tables with proper structure
+✅ **Data Seeded**: Sample financial data populated
+✅ **API Working**: All endpoints respond correctly
+✅ **Tests Pass**: All database tests successful
+
+The platform is now optimized for financial applications with PostgreSQL! 🚀📈
