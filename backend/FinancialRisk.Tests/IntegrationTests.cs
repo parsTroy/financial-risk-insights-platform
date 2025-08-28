@@ -26,23 +26,25 @@ namespace FinancialRisk.Tests
             
             _factory = factory.WithWebHostBuilder(builder =>
             {
+                builder.UseEnvironment("Test");
+                
                 builder.ConfigureServices(services =>
                 {
-                    // Replace the real service with mock
-                    var descriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(IFinancialDataService));
-                    if (descriptor != null)
+                    // Replace the real service with mock - remove all instances first
+                    var financialDataDescriptors = services.Where(
+                        d => d.ServiceType == typeof(IFinancialDataService)).ToList();
+                    foreach (var descriptor in financialDataDescriptors)
                     {
                         services.Remove(descriptor);
                     }
                     services.AddSingleton(_mockFinancialDataService.Object);
 
-                    // Use in-memory database for testing
-                    var dbContextDescriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(DbContextOptions<FinancialRiskDbContext>));
-                    if (dbContextDescriptor != null)
+                    // Use in-memory database for testing - remove all instances first
+                    var dbContextDescriptors = services.Where(
+                        d => d.ServiceType == typeof(DbContextOptions<FinancialRiskDbContext>)).ToList();
+                    foreach (var descriptor in dbContextDescriptors)
                     {
-                        services.Remove(dbContextDescriptor);
+                        services.Remove(descriptor);
                     }
 
                     services.AddDbContext<FinancialRiskDbContext>(options =>
@@ -50,12 +52,12 @@ namespace FinancialRisk.Tests
                         options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid().ToString());
                     });
 
-                    // Remove the real seeder service
-                    var seederDescriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(DataSeederService));
-                    if (seederDescriptor != null)
+                    // Remove the real seeder service - remove all instances first
+                    var seederDescriptors = services.Where(
+                        d => d.ServiceType == typeof(DataSeederService)).ToList();
+                    foreach (var descriptor in seederDescriptors)
                     {
-                        services.Remove(seederDescriptor);
+                        services.Remove(descriptor);
                     }
                 });
 
@@ -68,6 +70,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task HealthCheck_ReturnsOk()
         {
             // Arrange
@@ -83,6 +86,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetAssets_ReturnsOkWithData()
         {
             // Arrange
@@ -99,6 +103,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetAsset_WithValidId_ReturnsOk()
         {
             // Arrange
@@ -114,6 +119,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetAsset_WithInvalidId_ReturnsNotFound()
         {
             // Arrange
@@ -127,6 +133,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetAssetBySymbol_WithValidSymbol_ReturnsOk()
         {
             // Arrange
@@ -142,6 +149,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetAssetBySymbol_WithInvalidSymbol_ReturnsNotFound()
         {
             // Arrange
@@ -155,6 +163,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetPortfolios_ReturnsOkWithData()
         {
             // Arrange
@@ -172,6 +181,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetPortfolio_WithValidId_ReturnsOk()
         {
             // Arrange
@@ -187,6 +197,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetPortfolio_WithInvalidId_ReturnsNotFound()
         {
             // Arrange
@@ -200,6 +211,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetPortfolioPerformance_WithValidId_ReturnsOk()
         {
             // Arrange
@@ -215,6 +227,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetPortfolioPerformance_WithInvalidId_ReturnsNotFound()
         {
             // Arrange
@@ -228,6 +241,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetStockQuote_WithMockedService_ReturnsExpectedData()
         {
             // Arrange
@@ -273,6 +287,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetStockQuote_WithMockedServiceFailure_ReturnsError()
         {
             // Arrange
@@ -307,6 +322,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetCurrentPrice_WithMockedService_ReturnsExpectedData()
         {
             // Arrange
@@ -340,6 +356,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetForexQuote_WithMockedService_ReturnsExpectedData()
         {
             // Arrange
@@ -381,6 +398,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetStockHistory_WithMockedService_ReturnsExpectedData()
         {
             // Arrange
@@ -419,6 +437,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetStockQuote_WithNullSymbol_ReturnsBadRequest()
         {
             // Arrange
@@ -432,6 +451,7 @@ namespace FinancialRisk.Tests
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetForexQuote_WithInvalidCurrencies_ReturnsBadRequest()
         {
             // Arrange

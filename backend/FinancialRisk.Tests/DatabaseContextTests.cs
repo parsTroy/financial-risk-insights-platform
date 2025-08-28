@@ -7,13 +7,17 @@ namespace FinancialRisk.Tests;
 
 public class DatabaseContextTests
 {
+    private DbContextOptions<FinancialRiskDbContext> CreateInMemoryOptions(string databaseName)
+    {
+        return new DbContextOptionsBuilder<FinancialRiskDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+    }
     [Fact]
     public void DatabaseContext_CanBeCreated()
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<FinancialRiskDbContext>()
-            .UseNpgsql("Host=localhost;Database=FinancialRiskTestDb;Username=postgres;Password=postgres;Port=5432")
-            .Options;
+        var options = CreateInMemoryOptions("TestDb_CanBeCreated");
 
         // Act & Assert
         using var context = new FinancialRiskDbContext(options);
@@ -24,9 +28,7 @@ public class DatabaseContextTests
     public void DatabaseContext_HasCorrectDbSets()
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<FinancialRiskDbContext>()
-            .UseNpgsql("Host=localhost;Database=FinancialRiskTestDb2;Username=postgres;Password=postgres;Port=5432")
-            .Options;
+        var options = CreateInMemoryOptions("TestDb_HasCorrectDbSets");
 
         using var context = new FinancialRiskDbContext(options);
 
@@ -41,9 +43,7 @@ public class DatabaseContextTests
     public async Task Asset_CanBeAddedToContext()
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<FinancialRiskDbContext>()
-            .UseNpgsql("Host=localhost;Database=FinancialRiskTestDb3;Username=postgres;Password=postgres;Port=5432")
-            .Options;
+        var options = CreateInMemoryOptions("TestDb_Asset_CanBeAddedToContext");
 
         using var context = new FinancialRiskDbContext(options);
 
@@ -70,9 +70,7 @@ public class DatabaseContextTests
     public async Task Portfolio_CanBeAddedToContext()
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<FinancialRiskDbContext>()
-            .UseNpgsql("Host=localhost;Database=FinancialRiskTestDb4;Username=postgres;Password=postgres;Port=5432")
-            .Options;
+        var options = CreateInMemoryOptions("TestDb_Portfolio_CanBeAddedToContext");
 
         using var context = new FinancialRiskDbContext(options);
 
@@ -99,9 +97,7 @@ public class DatabaseContextTests
     public async Task Price_CanBeAddedToContext()
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<FinancialRiskDbContext>()
-            .UseNpgsql("Host=localhost;Database=FinancialRiskTestDb5;Username=postgres;Password=postgres;Port=5432")
-            .Options;
+        var options = CreateInMemoryOptions("TestDb_Price_CanBeAddedToContext");
 
         using var context = new FinancialRiskDbContext(options);
 
@@ -140,9 +136,7 @@ public class DatabaseContextTests
     public async Task PortfolioHolding_CanBeAddedToContext()
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<FinancialRiskDbContext>()
-            .UseNpgsql("Host=localhost;Database=FinancialRiskTestDb6;Username=postgres;Password=postgres;Port=5432")
-            .Options;
+        var options = CreateInMemoryOptions("TestDb_PortfolioHolding_CanBeAddedToContext");
 
         using var context = new FinancialRiskDbContext(options);
 

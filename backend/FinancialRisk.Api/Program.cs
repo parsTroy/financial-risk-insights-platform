@@ -52,20 +52,23 @@ logger.LogInformation("  Timeout: {Timeout}s", config.Value.RequestTimeoutSecond
 logger.LogInformation("  Rate Limit: {RateLimit}/min", config.Value.MaxRequestsPerMinute);
 logger.LogInformation("  API Key: {ApiKey}", string.IsNullOrEmpty(config.Value.ApiKey) ? "NOT SET" : "SET (length: " + config.Value.ApiKey.Length + ")");
 
-// Ensure database is created and seeded
-using (var scope = app.Services.CreateScope())
+// Ensure database is created and seeded (only in non-testing environments)
+if (!builder.Environment.IsEnvironment("Test"))
 {
-    var context = scope.ServiceProvider.GetRequiredService<FinancialRiskDbContext>();
-    var seeder = scope.ServiceProvider.GetRequiredService<DataSeederService>();
-    
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        // Seed data (this will also ensure database is created)
-        await seeder.SeedDataAsync();
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while creating/seeding the PostgreSQL database");
+        var context = scope.ServiceProvider.GetRequiredService<FinancialRiskDbContext>();
+        var seeder = scope.ServiceProvider.GetRequiredService<DataSeederService>();
+        
+        try
+        {
+            // Seed data (this will also ensure database is created)
+            await seeder.SeedDataAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while creating/seeding the PostgreSQL database");
+        }
     }
 }
 
