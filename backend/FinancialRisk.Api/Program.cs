@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using FinancialRisk.Api.Data;
 using FinancialRisk.Api.Services;
+using FinancialRisk.Api.Extensions;
 
 // Load environment variables from .env file
 DotEnv.Load();
@@ -17,9 +18,8 @@ builder.Configuration.AddEnvironmentVariables();
 builder.Services.AddControllers(); // Add this line to register controllers
 builder.Services.AddOpenApi();
 
-// Add Entity Framework Core with PostgreSQL
-builder.Services.AddDbContext<FinancialRiskDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Add Financial Risk Database with EF Core and PostgreSQL
+builder.Services.AddFinancialRiskDatabase(builder.Configuration, builder.Environment);
 
 // Configure financial API settings with environment variable support
 builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options =>
@@ -37,9 +37,6 @@ builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService,
 // Register financial data service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
-// Register data seeder service
-builder.Services.AddScoped<DataSeederService>();
-
 var app = builder.Build();
 
 // Log configuration to verify environment variables are loaded
@@ -52,6 +49,12 @@ logger.LogInformation("  Timeout: {Timeout}s", config.Value.RequestTimeoutSecond
 logger.LogInformation("  Rate Limit: {RateLimit}/min", config.Value.MaxRequestsPerMinute);
 logger.LogInformation("  API Key: {ApiKey}", string.IsNullOrEmpty(config.Value.ApiKey) ? "NOT SET" : "SET (length: " + config.Value.ApiKey.Length + ")");
 
+// Log database connection information
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+logger.LogInformation("Database Configuration:");
+logger.LogInformation("  Connection String: {ConnectionString}", 
+    connectionString?.Replace("Password=postgres", "Password=***") ?? "NOT SET");
+
 // Ensure database is created and seeded (only in non-testing environments)
 if (!builder.Environment.IsEnvironment("Test"))
 {
@@ -62,12 +65,19 @@ if (!builder.Environment.IsEnvironment("Test"))
         
         try
         {
-            // Seed data (this will also ensure database is created)
+            // Use migration service to ensure database is properly initialized
+            var migrationService = scope.ServiceProvider.GetRequiredService<IDatabaseMigrationService>();
+            await migrationService.MigrateAsync();
+            logger.LogInformation("Database migration completed successfully");
+            
+            // Seed data
             await seeder.SeedDataAsync();
+            logger.LogInformation("Database seeded successfully");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while creating/seeding the PostgreSQL database");
+            throw; // Re-throw to prevent app from starting with database issues
         }
     }
 }
@@ -79,6 +89,9 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseHttpsRedirection();
+
+// Add health check endpoint
+app.MapHealthChecks("/health");
 
 // Add this line to enable controller routing
 app.MapControllers();
