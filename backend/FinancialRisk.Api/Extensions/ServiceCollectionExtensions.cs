@@ -35,7 +35,8 @@ public static class ServiceCollectionExtensions
                 // Enable detailed logging in development
                 if (environment.IsDevelopment())
                 {
-                    npgsqlOptions.EnableDetailedErrors();
+                    // Note: EnableDetailedErrors is not available on NpgsqlDbContextOptionsBuilder in EF Core 9.0
+                    // Detailed errors are enabled at the DbContext level below
                 }
             });
             
