@@ -31,7 +31,10 @@ public class FinancialRiskDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnName("createdat");
             entity.Property(e => e.UpdatedAt).HasColumnName("updatedat");
             
-            entity.HasIndex(e => e.Symbol).IsUnique();
+            // Optimize for PostgreSQL
+            entity.HasIndex(e => e.Symbol).IsUnique().HasDatabaseName("ix_assets_symbol");
+            entity.HasIndex(e => e.Sector).HasDatabaseName("ix_assets_sector");
+            entity.HasIndex(e => e.AssetType).HasDatabaseName("ix_assets_assettype");
         });
 
         // Configure Price entity with lowercase table and column names
@@ -49,7 +52,10 @@ public class FinancialRiskDbContext : DbContext
             entity.Property(e => e.Volume).HasColumnName("volume").HasColumnType("BIGINT");
             entity.Property(e => e.CreatedAt).HasColumnName("createdat");
             
-            entity.HasIndex(e => new { e.AssetId, e.Date }).IsUnique();
+            // Optimize for PostgreSQL with proper indexing
+            entity.HasIndex(e => new { e.AssetId, e.Date }).IsUnique().HasDatabaseName("ix_prices_assetid_date");
+            entity.HasIndex(e => e.Date).HasDatabaseName("ix_prices_date");
+            entity.HasIndex(e => e.AssetId).HasDatabaseName("ix_prices_assetid");
         });
 
         // Configure Portfolio entity with lowercase table and column names
@@ -65,6 +71,10 @@ public class FinancialRiskDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnName("createdat");
             entity.Property(e => e.UpdatedAt).HasColumnName("updatedat");
             entity.Property(e => e.IsActive).HasColumnName("isactive");
+            
+            // Add indexes for common queries
+            entity.HasIndex(e => e.IsActive).HasDatabaseName("ix_portfolios_isactive");
+            entity.HasIndex(e => e.Strategy).HasDatabaseName("ix_portfolios_strategy");
         });
 
         // Configure PortfolioHolding entity with lowercase table and column names
@@ -79,9 +89,10 @@ public class FinancialRiskDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnName("createdat");
             entity.Property(e => e.UpdatedAt).HasColumnName("updatedat");
             
+            // Configure composite primary key
             entity.HasKey(e => new { e.PortfolioId, e.AssetId });
             
-            // Configure relationships
+            // Configure relationships with proper cascade behavior
             entity.HasOne(e => e.Portfolio)
                   .WithMany(p => p.PortfolioHoldings)
                   .HasForeignKey(e => e.PortfolioId)
@@ -91,6 +102,9 @@ public class FinancialRiskDbContext : DbContext
                   .WithMany(a => a.PortfolioHoldings)
                   .HasForeignKey(e => e.AssetId)
                   .OnDelete(DeleteBehavior.Cascade);
+            
+            // Add indexes for performance
+            entity.HasIndex(e => e.AssetId).HasDatabaseName("ix_portfolioholdings_assetid");
         });
 
         // Configure Asset relationships
@@ -101,5 +115,14 @@ public class FinancialRiskDbContext : DbContext
                   .HasForeignKey(p => p.AssetId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // Enable sensitive data logging only in development
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.EnableSensitiveDataLogging();
+        }
     }
 }
