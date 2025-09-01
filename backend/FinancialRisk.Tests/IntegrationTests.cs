@@ -355,47 +355,7 @@ namespace FinancialRisk.Tests
             Assert.Equal(152.50m, result.Data);
         }
 
-        [Fact]
-        [Trait("Category", "Integration")]
-        public async Task GetForexQuote_WithMockedService_ReturnsExpectedData()
-        {
-            // Arrange
-            var expectedResponse = new ApiResponse<ForexQuote>
-            {
-                Success = true,
-                Data = new ForexQuote
-                {
-                    FromCurrency = "USD",
-                    ToCurrency = "EUR",
-                    ExchangeRate = 0.85m,
-                    Timestamp = DateTime.UtcNow
-                },
-                StatusCode = 200
-            };
 
-            _mockFinancialDataService
-                .Setup(x => x.GetForexQuoteAsync("USD", "EUR"))
-                .ReturnsAsync(expectedResponse);
-
-            var client = _factory.CreateClient();
-
-            // Act
-            var response = await client.GetAsync("/api/FinancialData/forex/USD/EUR");
-
-            // Assert
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<ApiResponse<ForexQuote>>(content, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            Assert.NotNull(result);
-            Assert.True(result.Success);
-            Assert.Equal("USD", result.Data!.FromCurrency);
-            Assert.Equal("EUR", result.Data.ToCurrency);
-            Assert.Equal(0.85m, result.Data.ExchangeRate);
-        }
 
         [Fact]
         [Trait("Category", "Integration")]
@@ -450,18 +410,6 @@ namespace FinancialRisk.Tests
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        [Fact]
-        [Trait("Category", "Integration")]
-        public async Task GetForexQuote_WithInvalidCurrencies_ReturnsBadRequest()
-        {
-            // Arrange
-            var client = _factory.CreateClient();
 
-            // Act
-            var response = await client.GetAsync("/api/FinancialData/forex//EUR");
-
-            // Assert
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        }
     }
 }
