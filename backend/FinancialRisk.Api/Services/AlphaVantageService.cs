@@ -10,17 +10,20 @@ namespace FinancialRisk.Api.Services
         private readonly HttpClient _httpClient;
         private readonly ILogger<AlphaVantageService> _logger;
         private readonly FinancialApiConfig _config;
+        private readonly IDataPersistenceService _dataPersistenceService;
         private readonly SemaphoreSlim _rateLimiter;
         private readonly Queue<DateTime> _requestTimes;
 
         public AlphaVantageService(
             HttpClient httpClient,
             ILogger<AlphaVantageService> logger,
-            IOptions<FinancialApiConfig> config)
+            IOptions<FinancialApiConfig> config,
+            IDataPersistenceService dataPersistenceService)
         {
             _httpClient = httpClient;
             _logger = logger;
             _config = config.Value;
+            _dataPersistenceService = dataPersistenceService;
             _rateLimiter = new SemaphoreSlim(1, 1);
             _requestTimes = new Queue<DateTime>();
             
@@ -103,61 +106,6 @@ namespace FinancialRisk.Api.Services
             }
         }
 
-        public async Task<ApiResponse<ForexQuote>> GetForexQuoteAsync(string fromCurrency, string toCurrency)
-        {
-            try
-            {
-                _logger.LogInformation("Fetching forex quote for {FromCurrency}/{ToCurrency}", fromCurrency, toCurrency);
-                
-                await EnforceRateLimitAsync();
-                
-                var url = $"query?function=CURRENCY_EXCHANGE_RATE&from_currency={fromCurrency}&to_currency={toCurrency}&apikey={_config.ApiKey}";
-                var response = await _httpClient.GetAsync(url);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogWarning("API request failed for {FromCurrency}/{ToCurrency}. Status: {StatusCode}", fromCurrency, toCurrency, response.StatusCode);
-                    return new ApiResponse<ForexQuote>
-                    {
-                        Success = false,
-                        StatusCode = (int)response.StatusCode,
-                        ErrorMessage = $"API request failed with status {response.StatusCode}"
-                    };
-                }
-
-                var content = await response.Content.ReadAsStringAsync();
-                var forexQuote = ParseForexQuoteResponse(content, fromCurrency, toCurrency);
-                
-                if (forexQuote != null)
-                {
-                    _logger.LogInformation("Successfully fetched forex quote for {FromCurrency}/{ToCurrency}: {Rate}", fromCurrency, toCurrency, forexQuote.ExchangeRate);
-                    return new ApiResponse<ForexQuote>
-                    {
-                        Success = true,
-                        Data = forexQuote,
-                        StatusCode = 200
-                    };
-                }
-                
-                return new ApiResponse<ForexQuote>
-                {
-                    Success = false,
-                    StatusCode = 500,
-                    ErrorMessage = "Failed to parse API response"
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while fetching forex quote for {FromCurrency}/{ToCurrency}", fromCurrency, toCurrency);
-                return new ApiResponse<ForexQuote>
-                {
-                    Success = false,
-                    StatusCode = 500,
-                    ErrorMessage = "An error occurred while fetching forex data"
-                };
-            }
-        }
-
         public async Task<ApiResponse<List<StockQuote>>> GetStockHistoryAsync(string symbol, int days = 30)
         {
             try
@@ -234,6 +182,82 @@ namespace FinancialRisk.Api.Services
             };
         }
 
+        public async Task<ApiResponse<bool>> SaveStockQuoteToDatabaseAsync(string symbol)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching and saving stock quote for {Symbol} to database", symbol);
+                
+                var quoteResponse = await GetStockQuoteAsync(symbol);
+                if (!quoteResponse.Success || quoteResponse.Data == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = quoteResponse.StatusCode,
+                        ErrorMessage = quoteResponse.ErrorMessage
+                    };
+                }
+
+                var success = await _dataPersistenceService.SaveStockQuoteAsync(quoteResponse.Data);
+                
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = success,
+                    StatusCode = 200
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save stock quote for {Symbol} to database", symbol);
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    StatusCode = 500,
+                    ErrorMessage = "An error occurred while saving data to database"
+                };
+            }
+        }
+
+        public async Task<ApiResponse<bool>> SaveStockHistoryToDatabaseAsync(string symbol, int days = 30)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching and saving {Days} days of stock history for {Symbol} to database", days, symbol);
+                
+                var historyResponse = await GetStockHistoryAsync(symbol, days);
+                if (!historyResponse.Success || historyResponse.Data == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        StatusCode = historyResponse.StatusCode,
+                        ErrorMessage = historyResponse.ErrorMessage
+                    };
+                }
+
+                var success = await _dataPersistenceService.SaveStockHistoryAsync(symbol, historyResponse.Data);
+                
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = success,
+                    StatusCode = 200
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save stock history for {Symbol} to database", symbol);
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    StatusCode = 500,
+                    ErrorMessage = "An error occurred while saving data to database"
+                };
+            }
+        }
+
         private async Task EnforceRateLimitAsync()
         {
             await _rateLimiter.WaitAsync();
@@ -303,35 +327,6 @@ namespace FinancialRisk.Api.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to parse stock quote response for {Symbol}", symbol);
-                return null;
-            }
-        }
-
-        private ForexQuote? ParseForexQuoteResponse(string content, string fromCurrency, string toCurrency)
-        {
-            try
-            {
-                using var document = JsonDocument.Parse(content);
-                var root = document.RootElement;
-                
-                if (root.TryGetProperty("Realtime Currency Exchange Rate", out var exchangeRate))
-                {
-                    var rate = exchangeRate.GetProperty("5. Exchange Rate");
-                    
-                    return new ForexQuote
-                    {
-                        FromCurrency = fromCurrency,
-                        ToCurrency = toCurrency,
-                        ExchangeRate = decimal.Parse(rate.GetString() ?? "0"),
-                        Timestamp = DateTime.UtcNow
-                    };
-                }
-                
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to parse forex quote response for {FromCurrency}/{ToCurrency}", fromCurrency, toCurrency);
                 return null;
             }
         }
