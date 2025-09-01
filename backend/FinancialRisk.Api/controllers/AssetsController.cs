@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FinancialRisk.Api.Data;
 using FinancialRisk.Api.Models;
 
-namespace FinancialRisk.Api.controllers;
+namespace FinancialRisk.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
