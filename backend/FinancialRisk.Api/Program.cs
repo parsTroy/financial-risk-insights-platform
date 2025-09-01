@@ -19,7 +19,8 @@ builder.Services.AddControllers(); // Add this line to register controllers
 builder.Services.AddOpenApi();
 
 // Add Financial Risk Database with EF Core and PostgreSQL
-builder.Services.AddFinancialRiskDatabase(builder.Configuration, builder.Environment);
+// Temporarily disabled for testing financial API without database
+// builder.Services.AddFinancialRiskDatabase(builder.Configuration, builder.Environment);
 
 // Configure financial API settings with environment variable support
 builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options =>
@@ -58,6 +59,8 @@ logger.LogInformation("  Connection String: {ConnectionString}",
 // Ensure database is created and seeded (only in non-testing environments)
 if (!builder.Environment.IsEnvironment("Test"))
 {
+    // Temporarily comment out database initialization to test financial API
+    /*
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<FinancialRiskDbContext>();
@@ -80,6 +83,8 @@ if (!builder.Environment.IsEnvironment("Test"))
             throw; // Re-throw to prevent app from starting with database issues
         }
     }
+    */
+    logger.LogInformation("Database initialization temporarily disabled for testing");
 }
 
 // Configure the HTTP request pipeline.
@@ -94,7 +99,14 @@ if (app.Environment.IsDevelopment())
 app.MapHealthChecks("/health");
 
 // Add this line to enable controller routing
-app.MapControllers();
+// Temporarily disable all controllers to test financial API without database
+// app.MapControllers();
+
+// Only map the FinancialDataController for testing
+app.MapControllerRoute(
+    name: "financialData",
+    pattern: "api/financialdata/{action}/{id?}",
+    defaults: new { controller = "FinancialData" });
 
 var summaries = new[]
 {
