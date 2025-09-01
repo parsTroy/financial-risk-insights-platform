@@ -13,14 +13,6 @@ namespace FinancialRisk.Api.Models
         public decimal ChangePercent { get; set; }
     }
 
-    public class ForexQuote
-    {
-        public string FromCurrency { get; set; } = string.Empty;
-        public string ToCurrency { get; set; } = string.Empty;
-        public decimal ExchangeRate { get; set; }
-        public DateTime Timestamp { get; set; }
-    }
-
     public class ApiResponse<T>
     {
         public bool Success { get; set; }

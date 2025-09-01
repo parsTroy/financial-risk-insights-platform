@@ -39,26 +39,6 @@ namespace FinancialRisk.Api.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("forex/{fromCurrency}/{toCurrency}")]
-        public async Task<IActionResult> GetForexQuote(string fromCurrency, string toCurrency)
-        {
-            if (string.IsNullOrWhiteSpace(fromCurrency) || string.IsNullOrWhiteSpace(toCurrency))
-            {
-                return BadRequest("Both fromCurrency and toCurrency are required");
-            }
-
-            _logger.LogInformation("Requesting forex quote for {FromCurrency}/{ToCurrency}", fromCurrency, toCurrency);
-            
-            var result = await _financialDataService.GetForexQuoteAsync(fromCurrency.ToUpper(), toCurrency.ToUpper());
-            
-            if (result.Success)
-            {
-                return Ok(result);
-            }
-            
-            return StatusCode(result.StatusCode, result);
-        }
-
         [HttpGet("stock/{symbol}/history")]
         public async Task<IActionResult> GetStockHistory(string symbol, [FromQuery] int days = 30)
         {
@@ -103,5 +83,50 @@ namespace FinancialRisk.Api.Controllers
             
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpPost("stock/{symbol}/save")]
+        public async Task<IActionResult> SaveStockQuote(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                return BadRequest("Symbol is required");
+            }
+
+            _logger.LogInformation("Requesting to save stock quote for symbol: {Symbol}", symbol);
+            
+            var result = await _financialDataService.SaveStockQuoteToDatabaseAsync(symbol.ToUpper());
+            
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPost("stock/{symbol}/history/save")]
+        public async Task<IActionResult> SaveStockHistory(string symbol, [FromQuery] int days = 30)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                return BadRequest("Symbol is required");
+            }
+
+            if (days <= 0 || days > 365)
+            {
+                return BadRequest("Days must be between 1 and 365");
+            }
+
+            _logger.LogInformation("Requesting to save {Days} days of stock history for symbol: {Symbol}", days, symbol);
+            
+            var result = await _financialDataService.SaveStockHistoryToDatabaseAsync(symbol.ToUpper(), days);
+            
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            
+            return StatusCode(result.StatusCode, result);
+        }
     }
-}
+} 

@@ -1,5 +1,4 @@
 using FinancialRisk.Api.Controllers;
-using FinancialRisk.Api.controllers;
 using FinancialRisk.Api.Models;
 using FinancialRisk.Api.Services;
 using FinancialRisk.Api.Data;
@@ -210,68 +209,7 @@ namespace FinancialRisk.Tests
             Assert.Contains("Network failure", response.ErrorMessage);
         }
 
-        [Fact]
-        public async Task GetForexQuote_WithValidCurrencies_ReturnsOkResult()
-        {
-            // Arrange
-            var expectedResponse = new ApiResponse<ForexQuote>
-            {
-                Success = true,
-                Data = new ForexQuote
-                {
-                    FromCurrency = "USD",
-                    ToCurrency = "EUR",
-                    ExchangeRate = 0.85m,
-                    Timestamp = DateTime.UtcNow
-                },
-                StatusCode = 200
-            };
 
-            _mockFinancialDataService
-                .Setup(x => x.GetForexQuoteAsync("USD", "EUR"))
-                .ReturnsAsync(expectedResponse);
-
-            var controller = new FinancialDataController(_mockFinancialDataService.Object, _mockLogger.Object);
-
-            // Act
-            var result = await controller.GetForexQuote("USD", "EUR");
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<ForexQuote>>(okResult.Value);
-            Assert.True(response.Success);
-            Assert.Equal("USD", response.Data!.FromCurrency);
-            Assert.Equal("EUR", response.Data.ToCurrency);
-            Assert.Equal(0.85m, response.Data.ExchangeRate);
-        }
-
-        [Fact]
-        public async Task GetForexQuote_WithInvalidFromCurrency_ReturnsBadRequest()
-        {
-            // Arrange
-            var controller = new FinancialDataController(_mockFinancialDataService.Object, _mockLogger.Object);
-
-            // Act
-            var result = await controller.GetForexQuote("", "EUR");
-
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("Both fromCurrency and toCurrency are required", badRequestResult.Value);
-        }
-
-        [Fact]
-        public async Task GetForexQuote_WithInvalidToCurrency_ReturnsBadRequest()
-        {
-            // Arrange
-            var controller = new FinancialDataController(_mockFinancialDataService.Object, _mockLogger.Object);
-
-            // Act
-            var result = await controller.GetForexQuote("USD", "");
-
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("Both fromCurrency and toCurrency are required", badRequestResult.Value);
-        }
 
         [Fact]
         public async Task GetStockHistory_WithValidSymbol_ReturnsOkResult()

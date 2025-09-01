@@ -37,6 +37,9 @@ builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService,
 // Register financial data service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
+// Register data persistence service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
+
 var app = builder.Build();
 
 // Log configuration to verify environment variables are loaded

@@ -14,6 +14,7 @@ namespace FinancialRisk.Tests
         private readonly Mock<ILogger<AlphaVantageService>> _mockLogger;
         private readonly FinancialApiConfig _config;
         private readonly Mock<HttpMessageHandler> _mockHttpHandler;
+        private readonly Mock<IDataPersistenceService> _mockDataPersistenceService;
 
         public FinancialDataServiceTests()
         {
@@ -27,6 +28,7 @@ namespace FinancialRisk.Tests
                 Provider = "AlphaVantage"
             };
             _mockHttpHandler = new Mock<HttpMessageHandler>();
+            _mockDataPersistenceService = new Mock<IDataPersistenceService>();
         }
 
         [Fact]
@@ -34,7 +36,7 @@ namespace FinancialRisk.Tests
         {
             // Arrange & Act
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Assert
             Assert.NotNull(service);
@@ -59,7 +61,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -89,7 +91,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -101,38 +103,7 @@ namespace FinancialRisk.Tests
             Assert.Contains("API request failed", result.ErrorMessage);
         }
 
-        [Fact]
-        public async Task GetForexQuoteAsync_WithValidResponse_ReturnsSuccess()
-        {
-            // Arrange
-            var expectedResponse = @"{""Realtime Currency Exchange Rate"":{""1. From_Currency Code"":""USD"",""2. From_Currency Name"":""United States Dollar"",""3. To_Currency Code"":""EUR"",""4. To_Currency Name"":""Euro"",""5. Exchange Rate"":""0.85"",""6. Last Refreshed"":""2024-01-01 00:00:00"",""7. Time Zone"":""UTC"",""8. Bid Price"":""0.85"",""9. Ask Price"":""0.85""}}";
-            
-            _mockHttpHandler
-                .Protected()
-                .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(expectedResponse)
-                });
 
-            var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
-
-            // Act
-            var result = await service.GetForexQuoteAsync("USD", "EUR");
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.NotNull(result.Data);
-            Assert.Equal("USD", result.Data.FromCurrency);
-            Assert.Equal("EUR", result.Data.ToCurrency);
-            Assert.Equal(0.85m, result.Data.ExchangeRate);
-            Assert.Equal(200, result.StatusCode);
-        }
 
         [Fact]
         public async Task GetCurrentPriceAsync_WithValidStockQuote_ReturnsPrice()
@@ -153,7 +124,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetCurrentPriceAsync("MSFT");
@@ -179,7 +150,7 @@ namespace FinancialRisk.Tests
                 .ThrowsAsync(new HttpRequestException("Network connection failed"));
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -204,7 +175,7 @@ namespace FinancialRisk.Tests
                 .ThrowsAsync(new TaskCanceledException("Request timeout"));
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -235,7 +206,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -264,7 +235,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -293,7 +264,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -322,7 +293,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -351,7 +322,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("AAPL");
@@ -382,7 +353,7 @@ namespace FinancialRisk.Tests
                 });
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetStockQuoteAsync("INVALID");
@@ -394,30 +365,7 @@ namespace FinancialRisk.Tests
             Assert.Contains("Failed to parse API response", result.ErrorMessage);
         }
 
-        [Fact]
-        public async Task GetForexQuoteAsync_WithNetworkFailure_ReturnsFailure()
-        {
-            // Arrange - Simulate network failure for forex
-            _mockHttpHandler
-                .Protected()
-                .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
-                .ThrowsAsync(new HttpRequestException("Network connection failed"));
 
-            var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
-
-            // Act
-            var result = await service.GetForexQuoteAsync("USD", "EUR");
-
-            // Assert
-            Assert.False(result.Success);
-            Assert.Null(result.Data);
-            Assert.Equal(500, result.StatusCode);
-            Assert.Contains("An error occurred while fetching forex data", result.ErrorMessage);
-        }
 
         [Fact]
         public async Task GetCurrentPriceAsync_WithNetworkFailure_ReturnsFailure()
@@ -432,7 +380,7 @@ namespace FinancialRisk.Tests
                 .ThrowsAsync(new HttpRequestException("Network connection failed"));
 
             var httpClient = new HttpClient(_mockHttpHandler.Object);
-            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config));
+            var service = new AlphaVantageService(httpClient, _mockLogger.Object, Options.Create(_config), _mockDataPersistenceService.Object);
 
             // Act
             var result = await service.GetCurrentPriceAsync("MSFT");
