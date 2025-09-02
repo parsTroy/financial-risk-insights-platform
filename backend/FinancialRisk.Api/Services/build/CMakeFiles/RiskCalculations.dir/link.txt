@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Wextra -pedantic -O3 -DNDEBUG -O3 -DNDEBUG -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -o lib/libRiskCalculations.dylib -install_name @rpath/libRiskCalculations.dylib CMakeFiles/RiskCalculations.dir/RiskCalculations.cpp.o

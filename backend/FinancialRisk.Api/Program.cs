@@ -41,6 +41,9 @@ builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, Fin
 // Register data persistence service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
 
+// Register risk metrics service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IRiskMetricsService, FinancialRisk.Api.Services.RiskMetricsService>();
+
 var app = builder.Build();
 
 // Log configuration to verify environment variables are loaded
@@ -105,11 +108,16 @@ app.MapHealthChecks("/health");
 // Temporarily disable all controllers to test financial API without database
 // app.MapControllers();
 
-// Only map the FinancialDataController for testing
+// Map controllers for testing
 app.MapControllerRoute(
     name: "financialData",
     pattern: "api/financialdata/{action}/{id?}",
     defaults: new { controller = "FinancialData" });
+
+app.MapControllerRoute(
+    name: "riskMetrics",
+    pattern: "api/riskmetrics/{action}/{id?}",
+    defaults: new { controller = "RiskMetrics" });
 
 var summaries = new[]
 {
