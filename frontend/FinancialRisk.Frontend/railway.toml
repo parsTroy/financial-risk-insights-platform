@@ -1,0 +1,17 @@
+# Railway Configuration for Frontend (Blazor WebAssembly)
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "echo 'Static site deployed'"
+healthcheckPath = "/"
+healthcheckTimeout = 60
+
+# Environment variables
+[env]
+NODE_VERSION = "18"
+DOTNET_VERSION = "9.0"
+
+# Static site configuration
+[static]
+# Railway will automatically detect this as a static site

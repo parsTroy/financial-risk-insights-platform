@@ -1,0 +1,16 @@
+# Railway Configuration for Financial Risk Insights Platform
+# This file configures the Railway deployment for all services
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "echo 'Railway deployment configured'"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+# Environment variables for all services
+[env]
+DOTNET_VERSION = "9.0"
+PYTHON_VERSION = "3.11"
+NODE_VERSION = "18"

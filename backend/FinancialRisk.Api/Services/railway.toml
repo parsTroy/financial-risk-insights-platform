@@ -1,0 +1,23 @@
+# Railway Configuration for Python Models Service
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python app.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+# Environment variables
+[env]
+PYTHON_VERSION = "3.11"
+FLASK_ENV = "production"
+FLASK_APP = "app.py"
+
+# Python dependencies
+[build.dependencies]
+python = "3.11"
+pip = "latest"
+
+# Install Python packages
+[build.scripts]
+"pip install numpy scipy pandas psutil flask" = "pip install numpy scipy pandas psutil flask"

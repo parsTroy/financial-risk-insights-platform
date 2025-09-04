@@ -71,3 +71,6 @@ env/
 .DS_Store
 Thumbs.db
 TECH_STACK.md
+RAILWAY_DEPLOYMENT.md
+GITHUB_PAGES_DEPLOYMENT.md
+.gitignore
