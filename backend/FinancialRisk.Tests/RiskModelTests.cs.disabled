@@ -1,6 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FinancialRisk.Api.Services;
 using FinancialRisk.Api.Models;
+using FinancialRisk.Api.Controllers;
+using Microsoft.Extensions.Logging;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,14 +14,18 @@ namespace FinancialRisk.Tests
     [TestClass]
     public class RiskModelTests
     {
-        private VaRCalculationService _varService;
+        private Mock<ILogger<MonteCarloController>> _mockLogger;
+        private Mock<IVaRCalculationService> _mockVarService;
+        private Mock<IFinancialDataService> _mockFinancialDataService;
         private MonteCarloController _monteCarloController;
 
         [TestInitialize]
         public void Setup()
         {
-            _varService = new VaRCalculationService();
-            _monteCarloController = new MonteCarloController(_varService);
+            _mockLogger = new Mock<ILogger<MonteCarloController>>();
+            _mockVarService = new Mock<IVaRCalculationService>();
+            _mockFinancialDataService = new Mock<IFinancialDataService>();
+            _monteCarloController = new MonteCarloController(_mockLogger.Object, _mockVarService.Object, _mockFinancialDataService.Object);
         }
 
         [TestMethod]
