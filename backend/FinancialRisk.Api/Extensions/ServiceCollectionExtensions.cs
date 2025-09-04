@@ -58,4 +58,20 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddFinancialRiskServices(this IServiceCollection services)
+    {
+        // Register financial data services
+        services.AddScoped<IFinancialDataService, AlphaVantageService>();
+        services.AddScoped<IDataPersistenceService, DataPersistenceService>();
+        
+        // Register risk calculation services
+        services.AddScoped<IVaRCalculationService, VaRCalculationService>();
+        services.AddScoped<IRiskMetricsService, RiskMetricsService>();
+        
+        // Register portfolio optimization services
+        services.AddScoped<IPortfolioOptimizationService, PortfolioOptimizationService>();
+
+        return services;
+    }
 }

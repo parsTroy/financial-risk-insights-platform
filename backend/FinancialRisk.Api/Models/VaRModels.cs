@@ -272,4 +272,175 @@ namespace FinancialRisk.Api.Models
         public string BestDistribution { get; set; } = string.Empty;
         public DateTime ComparisonDate { get; set; }
     }
+
+    // Portfolio Optimization Models
+    public class PortfolioOptimizationRequest
+    {
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<string> Symbols { get; set; } = new();
+        public string OptimizationMethod { get; set; } = "MeanVariance";
+        public double RiskAversion { get; set; } = 1.0;
+        public double? TargetReturn { get; set; }
+        public double? TargetVolatility { get; set; }
+        public double MaxWeight { get; set; } = 1.0;
+        public double MinWeight { get; set; } = 0.0;
+        public double MaxLeverage { get; set; } = 1.0;
+        public double TransactionCosts { get; set; } = 0.0;
+        public int LookbackPeriod { get; set; } = 252;
+        public double ConfidenceLevel { get; set; } = 0.95;
+        public Dictionary<string, object>? CustomConstraints { get; set; }
+        public bool CalculateEfficientFrontier { get; set; } = false;
+        public int EfficientFrontierPoints { get; set; } = 50;
+    }
+
+    public class AssetOptimizationData
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public double ExpectedReturn { get; set; }
+        public double Volatility { get; set; }
+        public List<double> HistoricalReturns { get; set; } = new();
+        public string? Sector { get; set; }
+        public double? MarketCap { get; set; }
+        public double? Beta { get; set; }
+    }
+
+    public class PortfolioOptimizationResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string PortfolioName { get; set; } = string.Empty;
+        public string OptimizationMethod { get; set; } = string.Empty;
+        public List<double> OptimalWeights { get; set; } = new();
+        public double ExpectedReturn { get; set; }
+        public double ExpectedVolatility { get; set; }
+        public double SharpeRatio { get; set; }
+        public double VaR { get; set; }
+        public double CVaR { get; set; }
+        public double DiversificationRatio { get; set; }
+        public double ConcentrationRatio { get; set; }
+        public List<AssetWeight> AssetWeights { get; set; } = new();
+        public Dictionary<string, object> OptimizationMetadata { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
+
+    public class AssetWeight
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public double Weight { get; set; }
+        public double ExpectedReturn { get; set; }
+        public double Volatility { get; set; }
+        public double RiskContribution { get; set; }
+        public double ReturnContribution { get; set; }
+    }
+
+    public class EfficientFrontierPoint
+    {
+        public double ExpectedReturn { get; set; }
+        public double ExpectedVolatility { get; set; }
+        public double SharpeRatio { get; set; }
+        public List<double> Weights { get; set; } = new();
+    }
+
+    public class EfficientFrontier
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public List<EfficientFrontierPoint> Points { get; set; } = new();
+        public EfficientFrontierPoint? MinVolatilityPoint { get; set; }
+        public EfficientFrontierPoint? MaxSharpePoint { get; set; }
+        public EfficientFrontierPoint? MaxReturnPoint { get; set; }
+        public Dictionary<string, object> FrontierMetadata { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
+
+    public class PortfolioOptimizationResponse
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public PortfolioOptimizationResult? OptimizationResult { get; set; }
+        public EfficientFrontier? EfficientFrontier { get; set; }
+    }
+
+    public class RiskBudgetingRequest
+    {
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<string> Symbols { get; set; } = new();
+        public List<double> RiskBudgets { get; set; } = new();
+        public double MaxWeight { get; set; } = 1.0;
+        public double MinWeight { get; set; } = 0.0;
+        public int LookbackPeriod { get; set; } = 252;
+        public Dictionary<string, object>? CustomConstraints { get; set; }
+    }
+
+    public class RiskBudgetingResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<double> OptimalWeights { get; set; } = new();
+        public List<double> RiskBudgets { get; set; } = new();
+        public List<double> ActualRiskContributions { get; set; } = new();
+        public double PortfolioVolatility { get; set; }
+        public List<AssetWeight> AssetWeights { get; set; } = new();
+        public Dictionary<string, object> OptimizationMetadata { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
+
+    public class BlackLittermanRequest
+    {
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<string> Symbols { get; set; } = new();
+        public List<double> MarketCapWeights { get; set; } = new();
+        public List<double> Views { get; set; } = new();
+        public List<List<double>> PickMatrix { get; set; } = new();
+        public List<double> ViewUncertainties { get; set; } = new();
+        public double RiskAversion { get; set; } = 1.0;
+        public double Tau { get; set; } = 0.025;
+        public double MaxWeight { get; set; } = 1.0;
+        public double MinWeight { get; set; } = 0.0;
+        public int LookbackPeriod { get; set; } = 252;
+    }
+
+    public class BlackLittermanResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<double> OptimalWeights { get; set; } = new();
+        public List<double> ImpliedReturns { get; set; } = new();
+        public List<double> AdjustedReturns { get; set; } = new();
+        public double ExpectedReturn { get; set; }
+        public double ExpectedVolatility { get; set; }
+        public double SharpeRatio { get; set; }
+        public List<AssetWeight> AssetWeights { get; set; } = new();
+        public Dictionary<string, object> OptimizationMetadata { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
+
+    public class TransactionCostOptimizationRequest
+    {
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<string> Symbols { get; set; } = new();
+        public List<double> CurrentWeights { get; set; } = new();
+        public List<double> TargetWeights { get; set; } = new();
+        public List<double> TransactionCosts { get; set; } = new();
+        public double MaxTurnover { get; set; } = 1.0;
+        public double MaxWeight { get; set; } = 1.0;
+        public double MinWeight { get; set; } = 0.0;
+        public Dictionary<string, object>? CustomConstraints { get; set; }
+    }
+
+    public class TransactionCostOptimizationResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<double> OptimalWeights { get; set; } = new();
+        public List<double> RebalancingWeights { get; set; } = new();
+        public double TotalTransactionCosts { get; set; }
+        public double Turnover { get; set; }
+        public List<AssetWeight> AssetWeights { get; set; } = new();
+        public Dictionary<string, object> OptimizationMetadata { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
 }
