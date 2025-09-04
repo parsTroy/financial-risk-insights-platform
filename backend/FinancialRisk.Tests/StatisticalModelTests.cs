@@ -1,0 +1,445 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using FinancialRisk.Api.Services;
+using FinancialRisk.Api.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace FinancialRisk.Tests
+{
+    [TestClass]
+    public class StatisticalModelTests
+    {
+        private IPythonInteropService _interopService;
+        private InteropController _interopController;
+
+        [TestInitialize]
+        public void Setup()
+        {
+            _interopService = new UnifiedInteropService();
+            _interopController = new InteropController(_interopService);
+        }
+
+        [TestMethod]
+        public async Task GARCHModel_WithKnownDataset_ReturnsValidVolatility()
+        {
+            // Arrange - Generate GARCH-like data
+            var returns = GenerateGARCHData(1000, 0.0001, 0.1, 0.85, 0.0001);
+            
+            var request = new QuantModelRequest
+            {
+                ModelName = "garch_model",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["p"] = 1,
+                    ["q"] = 1
+                },
+                InputData = new Dictionary<string, object>
+                {
+                    ["returns"] = returns
+                }
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.Results.ContainsKey("volatility"));
+            
+            var volatility = (double)result.Data.Results["volatility"];
+            Assert.IsTrue(volatility > 0, "Volatility should be positive");
+            Assert.IsTrue(volatility < 1.0, "Volatility should be reasonable");
+        }
+
+        [TestMethod]
+        public async Task CopulaModel_WithKnownDataset_ReturnsValidCorrelationMatrix()
+        {
+            // Arrange - Generate correlated data
+            var data = GenerateCorrelatedData(1000, 3, 0.3);
+            
+            var request = new QuantModelRequest
+            {
+                ModelName = "copula_model",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["copula_type"] = "gaussian"
+                },
+                InputData = new Dictionary<string, object>
+                {
+                    ["data"] = data
+                }
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.Results.ContainsKey("correlation_matrix"));
+            
+            var correlationMatrix = (List<List<double>>)result.Data.Results["correlation_matrix"];
+            Assert.AreEqual(3, correlationMatrix.Count, "Correlation matrix should have 3 rows");
+            Assert.AreEqual(3, correlationMatrix[0].Count, "Correlation matrix should have 3 columns");
+            
+            // Check diagonal elements are 1
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.AreEqual(1.0, correlationMatrix[i][i], 0.001, "Diagonal elements should be 1");
+            }
+            
+            // Check symmetry
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    Assert.AreEqual(correlationMatrix[i][j], correlationMatrix[j][i], 0.001, 
+                        "Correlation matrix should be symmetric");
+                }
+            }
+        }
+
+        [TestMethod]
+        public async Task RegimeSwitching_WithKnownDataset_ReturnsValidRegimes()
+        {
+            // Arrange - Generate regime-switching data
+            var returns = GenerateRegimeSwitchingData(1000, 2);
+            
+            var request = new QuantModelRequest
+            {
+                ModelName = "regime_switching",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["num_regimes"] = 2
+                },
+                InputData = new Dictionary<string, object>
+                {
+                    ["returns"] = returns
+                }
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.Results.ContainsKey("num_regimes"));
+            Assert.IsTrue(result.Data.Results.ContainsKey("regime_probabilities"));
+            
+            var numRegimes = (int)result.Data.Results["num_regimes"];
+            Assert.AreEqual(2, numRegimes, "Should identify 2 regimes");
+            
+            var regimeProbs = (List<double>)result.Data.Results["regime_probabilities"];
+            Assert.AreEqual(2, regimeProbs.Count, "Should have probabilities for 2 regimes");
+            
+            var totalProb = regimeProbs.Sum();
+            Assert.AreEqual(1.0, totalProb, 0.001, "Regime probabilities should sum to 1");
+        }
+
+        [TestMethod]
+        public async Task GARCHModel_WithDifferentParameters_ReturnsDifferentVolatilities()
+        {
+            // Arrange - Test different GARCH parameters
+            var returns = GenerateGARCHData(1000, 0.0001, 0.1, 0.85, 0.0001);
+            
+            var parameters1 = new Dictionary<string, object> { ["p"] = 1, ["q"] = 1 };
+            var parameters2 = new Dictionary<string, object> { ["p"] = 2, ["q"] = 1 };
+            
+            var request1 = new QuantModelRequest
+            {
+                ModelName = "garch_model",
+                Parameters = parameters1,
+                InputData = new Dictionary<string, object> { ["returns"] = returns }
+            };
+            
+            var request2 = new QuantModelRequest
+            {
+                ModelName = "garch_model",
+                Parameters = parameters2,
+                InputData = new Dictionary<string, object> { ["returns"] = returns }
+            };
+
+            // Act
+            var result1 = await _interopController.ExecuteModel(request1);
+            var result2 = await _interopController.ExecuteModel(request2);
+
+            // Assert
+            Assert.IsTrue(result1.IsSuccess);
+            Assert.IsTrue(result2.IsSuccess);
+            
+            var volatility1 = (double)result1.Data.Results["volatility"];
+            var volatility2 = (double)result2.Data.Results["volatility"];
+            
+            // Different parameters should produce different results
+            Assert.AreNotEqual(volatility1, volatility2, 0.001, 
+                "Different GARCH parameters should produce different volatilities");
+        }
+
+        [TestMethod]
+        public async Task CopulaModel_WithDifferentTypes_ReturnsValidResults()
+        {
+            // Arrange - Test different copula types
+            var data = GenerateCorrelatedData(1000, 2, 0.5);
+            var copulaTypes = new[] { "gaussian", "t", "clayton" };
+            var results = new List<Dictionary<string, object>>();
+
+            foreach (var copulaType in copulaTypes)
+            {
+                var request = new QuantModelRequest
+                {
+                    ModelName = "copula_model",
+                    Parameters = new Dictionary<string, object>
+                    {
+                        ["copula_type"] = copulaType
+                    },
+                    InputData = new Dictionary<string, object>
+                    {
+                        ["data"] = data
+                    }
+                };
+
+                // Act
+                var result = await _interopController.ExecuteModel(request);
+                results.Add(result.Data.Results);
+            }
+
+            // Assert
+            Assert.AreEqual(3, results.Count);
+            foreach (var result in results)
+            {
+                Assert.IsTrue(result.ContainsKey("correlation_matrix"));
+                Assert.IsTrue(result.ContainsKey("copula_type"));
+            }
+        }
+
+        [TestMethod]
+        public async Task RegimeSwitching_WithDifferentNumRegimes_ReturnsAppropriateResults()
+        {
+            // Arrange - Test different numbers of regimes
+            var returns = GenerateRegimeSwitchingData(1000, 3);
+            var numRegimesList = new[] { 2, 3, 4 };
+            var results = new List<Dictionary<string, object>>();
+
+            foreach (var numRegimes in numRegimesList)
+            {
+                var request = new QuantModelRequest
+                {
+                    ModelName = "regime_switching",
+                    Parameters = new Dictionary<string, object>
+                    {
+                        ["num_regimes"] = numRegimes
+                    },
+                    InputData = new Dictionary<string, object>
+                    {
+                        ["returns"] = returns
+                    }
+                };
+
+                // Act
+                var result = await _interopController.ExecuteModel(request);
+                results.Add(result.Data.Results);
+            }
+
+            // Assert
+            Assert.AreEqual(3, results.Count);
+            for (int i = 0; i < results.Count; i++)
+            {
+                var numRegimes = (int)results[i]["num_regimes"];
+                var regimeProbs = (List<double>)results[i]["regime_probabilities"];
+                
+                Assert.AreEqual(numRegimesList[i], numRegimes);
+                Assert.AreEqual(numRegimesList[i], regimeProbs.Count);
+                
+                var totalProb = regimeProbs.Sum();
+                Assert.AreEqual(1.0, totalProb, 0.001, "Regime probabilities should sum to 1");
+            }
+        }
+
+        [TestMethod]
+        public async Task GARCHModel_WithEmptyData_ReturnsError()
+        {
+            // Arrange
+            var request = new QuantModelRequest
+            {
+                ModelName = "garch_model",
+                Parameters = new Dictionary<string, object> { ["p"] = 1, ["q"] = 1 },
+                InputData = new Dictionary<string, object> { ["returns"] = new List<double>() }
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public async Task CopulaModel_WithSingleAsset_ReturnsError()
+        {
+            // Arrange - Single asset data (cannot compute correlation)
+            var data = new List<List<double>> { new List<double> { 1, 2, 3, 4, 5 } };
+            
+            var request = new QuantModelRequest
+            {
+                ModelName = "copula_model",
+                Parameters = new Dictionary<string, object> { ["copula_type"] = "gaussian" },
+                InputData = new Dictionary<string, object> { ["data"] = data }
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public async Task StatisticalModels_Performance_WithLargeDataset_CompletesInReasonableTime()
+        {
+            // Arrange - Large dataset
+            var returns = GenerateGARCHData(10000, 0.0001, 0.1, 0.85, 0.0001);
+            
+            var request = new QuantModelRequest
+            {
+                ModelName = "garch_model",
+                Parameters = new Dictionary<string, object> { ["p"] = 1, ["q"] = 1 },
+                InputData = new Dictionary<string, object> { ["returns"] = returns }
+            };
+
+            // Act
+            var startTime = DateTime.Now;
+            var result = await _interopController.ExecuteModel(request);
+            var executionTime = DateTime.Now - startTime;
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess, "GARCH model should succeed with large dataset");
+            Assert.IsTrue(executionTime.TotalSeconds < 10, 
+                "GARCH model should complete within 10 seconds for 10,000 observations");
+        }
+
+        [TestMethod]
+        public async Task StatisticalModels_WithInvalidParameters_ReturnsError()
+        {
+            // Arrange - Invalid GARCH parameters
+            var returns = GenerateGARCHData(1000, 0.0001, 0.1, 0.85, 0.0001);
+            
+            var request = new QuantModelRequest
+            {
+                ModelName = "garch_model",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["p"] = -1, // Invalid parameter
+                    ["q"] = 1
+                },
+                InputData = new Dictionary<string, object> { ["returns"] = returns }
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public async Task StatisticalModels_WithMissingParameters_ReturnsError()
+        {
+            // Arrange - Missing required parameters
+            var returns = GenerateGARCHData(1000, 0.0001, 0.1, 0.85, 0.0001);
+            
+            var request = new QuantModelRequest
+            {
+                ModelName = "garch_model",
+                Parameters = new Dictionary<string, object>(), // Missing parameters
+                InputData = new Dictionary<string, object> { ["returns"] = returns }
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
+        }
+
+        // Helper methods for generating test data
+        private List<double> GenerateGARCHData(int n, double omega, double alpha, double beta, double initialVar)
+        {
+            var random = new Random(42);
+            var returns = new List<double>();
+            var variances = new List<double> { initialVar };
+            
+            for (int i = 1; i < n; i++)
+            {
+                var variance = omega + alpha * Math.Pow(returns[i-1], 2) + beta * variances[i-1];
+                variances.Add(variance);
+                
+                var z = random.NextGaussian();
+                returns.Add(Math.Sqrt(variance) * z);
+            }
+            
+            return returns;
+        }
+
+        private List<List<double>> GenerateCorrelatedData(int n, int numAssets, double correlation)
+        {
+            var random = new Random(42);
+            var data = new List<List<double>>();
+            
+            for (int i = 0; i < numAssets; i++)
+            {
+                data.Add(new List<double>());
+            }
+            
+            for (int t = 0; t < n; t++)
+            {
+                var z1 = random.NextGaussian();
+                for (int i = 0; i < numAssets; i++)
+                {
+                    var z = random.NextGaussian();
+                    var correlatedValue = Math.Sqrt(correlation) * z1 + Math.Sqrt(1 - correlation) * z;
+                    data[i].Add(correlatedValue);
+                }
+            }
+            
+            return data;
+        }
+
+        private List<double> GenerateRegimeSwitchingData(int n, int numRegimes)
+        {
+            var random = new Random(42);
+            var returns = new List<double>();
+            var regimeProbs = new List<double> { 0.6, 0.4 }; // Regime probabilities
+            
+            for (int i = 0; i < n; i++)
+            {
+                var regime = random.NextDouble() < regimeProbs[0] ? 0 : 1;
+                var mean = regime == 0 ? 0.001 : -0.001;
+                var volatility = regime == 0 ? 0.02 : 0.05;
+                
+                var z = random.NextGaussian();
+                returns.Add(mean + volatility * z);
+            }
+            
+            return returns;
+        }
+    }
+
+    // Extension method for generating Gaussian random numbers
+    public static class RandomExtensions
+    {
+        public static double NextGaussian(this Random random)
+        {
+            var u1 = random.NextDouble();
+            var u2 = random.NextDouble();
+            return Math.Sqrt(-2 * Math.Log(u1)) * Math.Cos(2 * Math.PI * u2);
+        }
+    }
+}
