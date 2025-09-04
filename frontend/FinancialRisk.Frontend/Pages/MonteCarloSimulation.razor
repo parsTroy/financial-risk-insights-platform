@@ -1,0 +1,238 @@
+@page "/monte-carlo"
+@using FinancialRisk.Frontend.Models
+@using FinancialRisk.Frontend.Services
+@inject VaRApiService VaRService
+@inject ILogger<MonteCarloSimulation> Logger
+
+<PageTitle>Monte Carlo Simulation</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 mb-4">Monte Carlo VaR Simulation</h1>
+            <p class="lead">Run Monte Carlo simulations to estimate Value at Risk using various distribution models.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Simulation Parameters</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@simulationRequest" OnValidSubmit="@RunSimulation">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="confidenceLevel" class="form-label">Confidence Level</label>
+                            <InputNumber @bind-Value="simulationRequest.ConfidenceLevel" 
+                                       class="form-control" 
+                                       id="confidenceLevel" 
+                                       min="0.01" 
+                                       max="0.99" 
+                                       step="0.01" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="timeHorizon" class="form-label">Time Horizon (Days)</label>
+                            <InputNumber @bind-Value="simulationRequest.TimeHorizon" 
+                                       class="form-control" 
+                                       id="timeHorizon" 
+                                       min="1" 
+                                       max="365" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="distributionType" class="form-label">Distribution Type</label>
+                            <InputSelect @bind-Value="simulationRequest.DistributionType" class="form-select" id="distributionType">
+                                <option value="normal">Normal Distribution</option>
+                                <option value="t_student">T-Student Distribution</option>
+                                <option value="garch">GARCH Model</option>
+                                <option value="copula">Copula Model</option>
+                                <option value="skewed_t">Skewed T-Distribution</option>
+                                <option value="mixture">Mixture Distribution</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="numSimulations" class="form-label">Number of Simulations</label>
+                            <InputNumber @bind-Value="simulationRequest.NumSimulations" 
+                                       class="form-control" 
+                                       id="numSimulations" 
+                                       min="1000" 
+                                       max="100000" 
+                                       step="1000" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="meanReturn" class="form-label">Mean Return (Daily)</label>
+                            <InputNumber @bind-Value="simulationRequest.MeanReturn" 
+                                       class="form-control" 
+                                       id="meanReturn" 
+                                       step="0.001" />
+                            <div class="form-text">Expected daily return (e.g., 0.001 for 0.1%)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="volatility" class="form-label">Volatility (Daily)</label>
+                            <InputNumber @bind-Value="simulationRequest.Volatility" 
+                                       class="form-control" 
+                                       id="volatility" 
+                                       step="0.001" />
+                            <div class="form-text">Daily volatility (e.g., 0.02 for 2%)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="randomSeed" class="form-label">Random Seed (Optional)</label>
+                            <InputNumber @bind-Value="simulationRequest.RandomSeed" 
+                                       class="form-control" 
+                                       id="randomSeed" />
+                            <div class="form-text">Leave empty for random seed</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@isRunning">
+                            @if (isRunning)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Running Simulation...</span>
+                            }
+                            else
+                            {
+                                <span>Run Monte Carlo Simulation</span>
+                            }
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Simulation Results</h5>
+                </div>
+                <div class="card-body">
+                    @if (simulationResult != null)
+                    {
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Value at Risk (VaR)</h6>
+                                    <h4 class="text-danger mb-0">@(simulationResult.VaR.ToString("P4"))</h4>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Conditional VaR (CVaR)</h6>
+                                    <h4 class="text-danger mb-0">@(simulationResult.CVaR.ToString("P4"))</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">Confidence Level:</small>
+                                <div>@(simulationResult.ConfidenceLevel.ToString("P2"))</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Method:</small>
+                                <div>@simulationResult.Method</div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <small class="text-muted">Simulations:</small>
+                                <div>@simulationResult.NumSimulations.ToString("N0")</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Execution Time:</small>
+                                <div>@(simulationResult.ExecutionTime.ToString("F2"))s</div>
+                            </div>
+                        </div>
+
+                        @if (simulationResult.SimulatedReturns != null && simulationResult.SimulatedReturns.Count > 0)
+                        {
+                            <div class="mt-3">
+                                <h6>Simulation Statistics</h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">Mean:</small>
+                                        <div>@(simulationResult.SimulatedReturns.Average().ToString("P4"))</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Std Dev:</small>
+                                        <div>@(Math.Sqrt(simulationResult.SimulatedReturns.Select(x => Math.Pow(x - simulationResult.SimulatedReturns.Average(), 2)).Average()).ToString("P4"))</div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <h6 class="alert-heading">Simulation Error</h6>
+                            <p class="mb-0">@errorMessage</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted">
+                            <i class="oi oi-graph display-1"></i>
+                            <p class="mt-3">Configure parameters and run simulation to see results</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private MonteCarloSimulationRequest simulationRequest = new()
+    {
+        ConfidenceLevel = 0.95,
+        TimeHorizon = 1,
+        DistributionType = "normal",
+        NumSimulations = 10000,
+        MeanReturn = 0.001,
+        Volatility = 0.02
+    };
+
+    private MonteCarloSimulationResult? simulationResult;
+    private string? errorMessage;
+    private bool isRunning = false;
+
+    private async Task RunSimulation()
+    {
+        try
+        {
+            isRunning = true;
+            errorMessage = null;
+            simulationResult = null;
+
+            var response = await VaRService.CalculateMonteCarloVaRAsync(simulationRequest);
+            
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                simulationResult = response.Data;
+            }
+            else
+            {
+                errorMessage = response?.ErrorMessage ?? "An error occurred while running the simulation.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error running Monte Carlo simulation");
+            errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            isRunning = false;
+        }
+    }
+}

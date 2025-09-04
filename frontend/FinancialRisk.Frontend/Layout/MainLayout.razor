@@ -1,0 +1,28 @@
+﻿@inherits LayoutComponentBase
+@using FinancialRisk.Frontend.Components
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted">Financial Risk Insights Platform</span>
+                <div>
+                    <a href="https://github.com/your-org/financial-risk-insights" target="_blank" class="btn btn-outline-secondary btn-sm me-2">
+                        <i class="oi oi-external-link"></i> GitHub
+                    </a>
+                    <a href="https://learn.microsoft.com/aspnet/core/" target="_blank" class="btn btn-outline-secondary btn-sm">
+                        <i class="oi oi-book"></i> Docs
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>

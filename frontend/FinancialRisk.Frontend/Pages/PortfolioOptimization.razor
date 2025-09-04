@@ -1,0 +1,304 @@
+@page "/portfolio-optimization"
+@using FinancialRisk.Frontend.Models
+@using FinancialRisk.Frontend.Services
+@inject PortfolioApiService PortfolioService
+@inject ILogger<PortfolioOptimization> Logger
+
+<PageTitle>Portfolio Optimization</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 mb-4">Portfolio Optimization</h1>
+            <p class="lead">Optimize your portfolio using various optimization methods including Markowitz, Black-Litterman, and Risk Parity.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Optimization Parameters</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@optimizationRequest" OnValidSubmit="@OptimizePortfolio">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="method" class="form-label">Optimization Method</label>
+                            <InputSelect @bind-Value="optimizationRequest.Method" class="form-select" id="method">
+                                <option value="mean_variance">Mean-Variance (Markowitz)</option>
+                                <option value="minimum_variance">Minimum Variance</option>
+                                <option value="maximum_sharpe">Maximum Sharpe Ratio</option>
+                                <option value="equal_weight">Equal Weight</option>
+                                <option value="risk_parity">Risk Parity</option>
+                                <option value="black_litterman">Black-Litterman</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="riskAversion" class="form-label">Risk Aversion</label>
+                            <InputNumber @bind-Value="optimizationRequest.RiskAversion" 
+                                       class="form-control" 
+                                       id="riskAversion" 
+                                       min="0.1" 
+                                       max="10" 
+                                       step="0.1" />
+                            <div class="form-text">Higher values indicate greater risk aversion</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="riskFreeRate" class="form-label">Risk-Free Rate</label>
+                            <InputNumber @bind-Value="optimizationRequest.RiskFreeRate" 
+                                       class="form-control" 
+                                       id="riskFreeRate" 
+                                       min="0" 
+                                       max="0.5" 
+                                       step="0.001" />
+                            <div class="form-text">Annual risk-free rate (e.g., 0.02 for 2%)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Portfolio Assets</label>
+                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                                @for (int i = 0; i < assets.Count; i++)
+                                {
+                                    var index = i;
+                                    <div class="row mb-2">
+                                        <div class="col-4">
+                                            <InputText @bind-Value="assets[index].Symbol" 
+                                                     class="form-control form-control-sm" 
+                                                     placeholder="Symbol" />
+                                        </div>
+                                        <div class="col-3">
+                                            <InputNumber @bind-Value="assets[index].ExpectedReturn" 
+                                                       class="form-control form-control-sm" 
+                                                       placeholder="Return" 
+                                                       step="0.001" />
+                                        </div>
+                                        <div class="col-3">
+                                            <InputNumber @bind-Value="assets[index].Volatility" 
+                                                       class="form-control form-control-sm" 
+                                                       placeholder="Volatility" 
+                                                       step="0.001" />
+                                        </div>
+                                        <div class="col-2">
+                                            <button type="button" 
+                                                   class="btn btn-outline-danger btn-sm" 
+                                                   @onclick="() => RemoveAsset(index)">
+                                                <i class="oi oi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" @onclick="AddAsset">
+                                <i class="oi oi-plus"></i> Add Asset
+                            </button>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@isOptimizing">
+                            @if (isOptimizing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Optimizing...</span>
+                            }
+                            else
+                            {
+                                <span>Optimize Portfolio</span>
+                            }
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Optimization Results</h5>
+                </div>
+                <div class="card-body">
+                    @if (optimizationResult != null)
+                    {
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Expected Return</h6>
+                                    <h4 class="text-success mb-0">@(optimizationResult.ExpectedReturn.ToString("P4"))</h4>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Expected Volatility</h6>
+                                    <h4 class="text-warning mb-0">@(optimizationResult.ExpectedVolatility.ToString("P4"))</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Sharpe Ratio</h6>
+                                    <h4 class="text-info mb-0">@(optimizationResult.SharpeRatio.ToString("F4"))</h4>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Execution Time</h6>
+                                    <h4 class="text-secondary mb-0">@(optimizationResult.ExecutionTime.ToString("F2"))s</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <h6>Optimal Weights</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Weight</th>
+                                        <th>Return</th>
+                                        <th>Risk Contribution</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var weight in optimizationResult.OptimalWeights)
+                                    {
+                                        <tr>
+                                            <td>@weight.Symbol</td>
+                                            <td>@(weight.Weight.ToString("P2"))</td>
+                                            <td>@(weight.ExpectedReturn.ToString("P4"))</td>
+                                            <td>@(weight.RiskContribution.ToString("P2"))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <h6 class="alert-heading">Optimization Error</h6>
+                            <p class="mb-0">@errorMessage</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted">
+                            <i class="oi oi-pie-chart display-1"></i>
+                            <p class="mt-3">Add assets and click "Optimize Portfolio" to see results</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private PortfolioOptimizationRequest optimizationRequest = new()
+    {
+        Method = "mean_variance",
+        RiskAversion = 1.0,
+        RiskFreeRate = 0.02
+    };
+
+    private List<AssetOptimizationData> assets = new()
+    {
+        new AssetOptimizationData { Symbol = "AAPL", ExpectedReturn = 0.08, Volatility = 0.20 },
+        new AssetOptimizationData { Symbol = "MSFT", ExpectedReturn = 0.10, Volatility = 0.18 },
+        new AssetOptimizationData { Symbol = "GOOGL", ExpectedReturn = 0.12, Volatility = 0.25 }
+    };
+
+    private PortfolioOptimizationResult? optimizationResult;
+    private string? errorMessage;
+    private bool isOptimizing = false;
+
+    private void AddAsset()
+    {
+        assets.Add(new AssetOptimizationData { Symbol = "", ExpectedReturn = 0, Volatility = 0 });
+    }
+
+    private void RemoveAsset(int index)
+    {
+        if (assets.Count > 1)
+        {
+            assets.RemoveAt(index);
+        }
+    }
+
+    private async Task OptimizePortfolio()
+    {
+        try
+        {
+            isOptimizing = true;
+            errorMessage = null;
+            optimizationResult = null;
+
+            // Update request with current assets
+            optimizationRequest.Assets = assets.Where(a => !string.IsNullOrWhiteSpace(a.Symbol)).ToList();
+
+            if (optimizationRequest.Assets.Count < 2)
+            {
+                errorMessage = "Please add at least 2 assets to the portfolio.";
+                return;
+            }
+
+            // Generate covariance matrix (simplified - in real app this would come from historical data)
+            optimizationRequest.CovarianceMatrix = GenerateCovarianceMatrix(optimizationRequest.Assets);
+
+            var response = await PortfolioService.OptimizePortfolioAsync(optimizationRequest);
+            
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                optimizationResult = response.Data;
+            }
+            else
+            {
+                errorMessage = response?.ErrorMessage ?? "An error occurred while optimizing the portfolio.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error optimizing portfolio");
+            errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            isOptimizing = false;
+        }
+    }
+
+    private List<List<double>> GenerateCovarianceMatrix(List<AssetOptimizationData> assets)
+    {
+        var n = assets.Count;
+        var matrix = new List<List<double>>();
+        var random = new Random(42); // Fixed seed for consistency
+
+        for (int i = 0; i < n; i++)
+        {
+            var row = new List<double>();
+            for (int j = 0; j < n; j++)
+            {
+                if (i == j)
+                {
+                    // Variance = volatility squared
+                    row.Add(Math.Pow(assets[i].Volatility, 2));
+                }
+                else
+                {
+                    // Covariance = correlation * sqrt(var1 * var2)
+                    var correlation = random.NextDouble() * 0.6 + 0.2; // Random correlation between 0.2 and 0.8
+                    var covariance = correlation * assets[i].Volatility * assets[j].Volatility;
+                    row.Add(covariance);
+                }
+            }
+            matrix.Add(row);
+        }
+
+        return matrix;
+    }
+}
