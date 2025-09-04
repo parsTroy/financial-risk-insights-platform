@@ -208,12 +208,12 @@
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public List<PortfolioAsset> PortfolioAssets { get; set; } = new();
-    [Parameter] public EventCallback<Portfolio> OnPortfolioLoaded { get; set; }
+    [Parameter] public EventCallback<PortfolioBuilder> OnPortfolioLoaded { get; set; }
     [Parameter] public EventCallback OnPortfolioSaved { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
     private PortfolioSaveRequest saveRequest = new();
-    private List<Portfolio> portfolios = new();
+    private List<PortfolioBuilder> portfolios = new();
     private string searchQuery = "";
     private bool isProcessing = false;
     private bool isSearching = false;
@@ -312,7 +312,7 @@
         await LoadPortfolios();
     }
 
-    private async Task LoadPortfolio(Portfolio portfolio)
+    private async Task LoadPortfolio(PortfolioBuilder portfolio)
     {
         try
         {
@@ -330,7 +330,7 @@
         }
     }
 
-    private async Task DeletePortfolio(Portfolio portfolio)
+    private async Task DeletePortfolio(PortfolioBuilder portfolio)
     {
         try
         {

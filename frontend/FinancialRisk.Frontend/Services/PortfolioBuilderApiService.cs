@@ -31,17 +31,17 @@ namespace FinancialRisk.Frontend.Services
             }
         }
 
-        public async Task<ApiResponse<Portfolio>?> SavePortfolioAsync(PortfolioSaveRequest request)
+        public async Task<ApiResponse<PortfolioBuilder>?> SavePortfolioAsync(PortfolioSaveRequest request)
         {
             try
             {
                 _logger.LogInformation("Saving portfolio: {PortfolioName}", request.Name);
-                return await _apiService.PostAsync<ApiResponse<Portfolio>>("/portfoliobuilder/save", request);
+                return await _apiService.PostAsync<ApiResponse<PortfolioBuilder>>("http://localhost:7001/api/portfoliobuilder/save", request);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving portfolio");
-                return new ApiResponse<Portfolio>
+                return new ApiResponse<PortfolioBuilder>
                 {
                     Success = false,
                     ErrorMessage = ex.Message
@@ -49,17 +49,17 @@ namespace FinancialRisk.Frontend.Services
             }
         }
 
-        public async Task<ApiResponse<Portfolio>?> LoadPortfolioAsync(PortfolioLoadRequest request)
+        public async Task<ApiResponse<PortfolioBuilder>?> LoadPortfolioAsync(PortfolioLoadRequest request)
         {
             try
             {
                 _logger.LogInformation("Loading portfolio: {PortfolioId}", request.PortfolioId);
-                return await _apiService.PostAsync<ApiResponse<Portfolio>>("/portfoliobuilder/load", request);
+                return await _apiService.PostAsync<ApiResponse<PortfolioBuilder>>("http://localhost:7001/api/portfoliobuilder/load", request);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading portfolio");
-                return new ApiResponse<Portfolio>
+                return new ApiResponse<PortfolioBuilder>
                 {
                     Success = false,
                     ErrorMessage = ex.Message
@@ -72,7 +72,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Listing portfolios for user");
-                return await _apiService.PostAsync<ApiResponse<PortfolioListResponse>>("/portfoliobuilder/list", request);
+                return await _apiService.PostAsync<ApiResponse<PortfolioListResponse>>("http://localhost:7001/api/portfoliobuilder/list", request);
             }
             catch (Exception ex)
             {
@@ -90,7 +90,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Deleting portfolio: {PortfolioId}", portfolioId);
-                var success = await _apiService.DeleteAsync($"/portfoliobuilder/{portfolioId}");
+                var success = await _apiService.DeleteAsync($"http://localhost:7001/api/portfoliobuilder/{portfolioId}");
                 return new ApiResponse<bool>
                 {
                     Success = success,
@@ -114,7 +114,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Getting portfolio summary: {PortfolioId}", portfolioId);
-                return await _apiService.GetAsync<ApiResponse<PortfolioSummary>>($"/portfoliobuilder/{portfolioId}/summary");
+                return await _apiService.GetAsync<ApiResponse<PortfolioSummary>>($"http://localhost:7001/api/portfoliobuilder/{portfolioId}/summary");
             }
             catch (Exception ex)
             {
@@ -127,12 +127,12 @@ namespace FinancialRisk.Frontend.Services
             }
         }
 
-        public async Task<ApiResponse<PortfolioValidationResult>?> ValidatePortfolioAsync(Portfolio portfolio)
+        public async Task<ApiResponse<PortfolioValidationResult>?> ValidatePortfolioAsync(PortfolioBuilder portfolio)
         {
             try
             {
                 _logger.LogInformation("Validating portfolio: {PortfolioId}", portfolio.Id);
-                return await _apiService.PostAsync<ApiResponse<PortfolioValidationResult>>("/portfoliobuilder/validate", portfolio);
+                return await _apiService.PostAsync<ApiResponse<PortfolioValidationResult>>("http://localhost:7001/api/portfoliobuilder/validate", portfolio);
             }
             catch (Exception ex)
             {
@@ -150,7 +150,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Rebalancing portfolio: {PortfolioId}", request.PortfolioId);
-                return await _apiService.PostAsync<ApiResponse<PortfolioRebalanceRequest>>("/portfoliobuilder/rebalance", request);
+                return await _apiService.PostAsync<ApiResponse<PortfolioRebalanceRequest>>("http://localhost:7001/api/portfoliobuilder/rebalance", request);
             }
             catch (Exception ex)
             {
@@ -169,7 +169,7 @@ namespace FinancialRisk.Frontend.Services
             {
                 _logger.LogInformation("Getting portfolio performance: {PortfolioId}", portfolioId);
                 var request = new { PortfolioId = portfolioId, StartDate = startDate, EndDate = endDate };
-                return await _apiService.PostAsync<ApiResponse<PortfolioPerformanceMetrics>>("/portfoliobuilder/performance", request);
+                return await _apiService.PostAsync<ApiResponse<PortfolioPerformanceMetrics>>("http://localhost:7001/api/portfoliobuilder/performance", request);
             }
             catch (Exception ex)
             {
@@ -187,7 +187,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Comparing portfolios");
-                return await _apiService.PostAsync<ApiResponse<PortfolioComparisonResult>>("/portfoliobuilder/compare", request);
+                return await _apiService.PostAsync<ApiResponse<PortfolioComparisonResult>>("http://localhost:7001/api/portfoliobuilder/compare", request);
             }
             catch (Exception ex)
             {
@@ -205,7 +205,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Getting available sectors");
-                return await _apiService.GetAsync<ApiResponse<List<string>>>("/portfoliobuilder/sectors");
+                return await _apiService.GetAsync<ApiResponse<List<string>>>("http://localhost:7001/api/portfoliobuilder/sectors");
             }
             catch (Exception ex)
             {
@@ -223,7 +223,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Getting available exchanges");
-                return await _apiService.GetAsync<ApiResponse<List<string>>>("/portfoliobuilder/exchanges");
+                return await _apiService.GetAsync<ApiResponse<List<string>>>("http://localhost:7001/api/portfoliobuilder/exchanges");
             }
             catch (Exception ex)
             {
@@ -242,7 +242,7 @@ namespace FinancialRisk.Frontend.Services
             {
                 _logger.LogInformation("Getting market data for {SymbolCount} symbols", symbols.Count);
                 var request = new { Symbols = symbols };
-                return await _apiService.PostAsync<ApiResponse<Dictionary<string, object>>>("/portfoliobuilder/market-data", request);
+                return await _apiService.PostAsync<ApiResponse<Dictionary<string, object>>>("http://localhost:7001/api/portfoliobuilder/market-data", request);
             }
             catch (Exception ex)
             {

@@ -234,7 +234,12 @@
                     <button type="button" class="btn-close" @onclick="HidePortfolioManager"></button>
                 </div>
                 <div class="modal-body">
-                    <PortfolioManager OnPortfolioSelected="LoadSelectedPortfolio" />
+                    <PortfolioManager 
+                        IsVisible="true" 
+                        IsSaving="false" 
+                        PortfolioAssets="portfolioAssets" 
+                        OnPortfolioLoaded="@((FinancialRisk.Frontend.Models.PortfolioBuilder portfolio) => LoadSelectedPortfolio(portfolio))" 
+                        OnClose="HidePortfolioManager" />
                 </div>
             </div>
         </div>
@@ -381,9 +386,9 @@
         showPortfolioManager = false;
     }
 
-    private void LoadSelectedPortfolio(Portfolio portfolio)
+    private void LoadSelectedPortfolio(FinancialRisk.Frontend.Models.PortfolioBuilder portfolio)
     {
-        portfolioAssets = portfolio.Assets?.ToList() ?? new List<PortfolioAsset>();
+        portfolioAssets = portfolio.Assets ?? new List<PortfolioAsset>();
         showPortfolioManager = false;
         StateHasChanged();
     }

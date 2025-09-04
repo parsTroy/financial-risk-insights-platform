@@ -45,10 +45,10 @@ builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options 
 });
 
 // Register HTTP client for financial API
-builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+// builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
 // Register financial data service
-builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+// builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
 // Register data persistence service (temporarily disabled for testing)
 // builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
