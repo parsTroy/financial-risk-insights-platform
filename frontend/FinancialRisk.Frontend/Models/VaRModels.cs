@@ -51,13 +51,6 @@ namespace FinancialRisk.Frontend.Models
         public string Method { get; set; } = "historical";
     }
 
-    public class PortfolioAsset
-    {
-        public string Symbol { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public List<double> Returns { get; set; } = new();
-        public double Weight { get; set; }
-    }
 
     public class PortfolioVaRResult
     {

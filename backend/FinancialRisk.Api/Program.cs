@@ -32,25 +32,35 @@ builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options 
     options.Provider = Environment.GetEnvironmentVariable("FINANCIAL_API_PROVIDER") ?? "AlphaVantage";
 });
 
-// Register HTTP client for financial API
-builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+// Register HTTP client for financial API (temporarily disabled for testing)
+// builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
-// Register financial data service
-builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+// Register financial data service (temporarily disabled for testing)
+// builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
-// Register data persistence service
-builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
+// Register data persistence service (temporarily disabled for testing)
+// builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
 
-// Register risk metrics service
-builder.Services.AddScoped<FinancialRisk.Api.Services.IRiskMetricsService, FinancialRisk.Api.Services.RiskMetricsService>();
+// Register risk metrics service (temporarily disabled for testing)
+// builder.Services.AddScoped<FinancialRisk.Api.Services.IRiskMetricsService, FinancialRisk.Api.Services.RiskMetricsService>();
 
-// Register VaR calculation service
-builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, FinancialRisk.Api.Services.VaRCalculationService>();
+// Register VaR calculation service (temporarily disabled for testing)
+// builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, FinancialRisk.Api.Services.VaRCalculationService>();
 
-// Register portfolio optimization service
-builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
+// Register portfolio optimization service (temporarily disabled for testing)
+// builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
 
-// Register Python/C++ interop services
+// Register HTTP client factory
+builder.Services.AddHttpClient();
+
+// Register health checks
+builder.Services.AddHealthChecks();
+
+// Register portfolio builder service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioBuilderService, FinancialRisk.Api.Services.PortfolioBuilderService>();
+
+// Register Python/C++ interop services (temporarily disabled for testing)
+/*
 builder.Services.Configure<FinancialRisk.Api.Services.InteropConfiguration>(options =>
 {
     options.EnablePythonNet = true;
@@ -65,6 +75,7 @@ builder.Services.AddScoped<FinancialRisk.Api.Services.PythonInteropService>();
 builder.Services.AddScoped<FinancialRisk.Api.Services.GrpcPythonService>();
 builder.Services.AddScoped<FinancialRisk.Api.Services.CppInteropService>();
 builder.Services.AddScoped<FinancialRisk.Api.Services.IPythonInteropService, FinancialRisk.Api.Services.UnifiedInteropService>();
+*/
 
 var app = builder.Build();
 
@@ -128,7 +139,7 @@ app.MapHealthChecks("/health");
 
 // Add this line to enable controller routing
 // Temporarily disable all controllers to test financial API without database
-// app.MapControllers();
+app.MapControllers();
 
 // Map controllers for testing
 app.MapControllerRoute(
@@ -161,6 +172,11 @@ app.MapControllerRoute(
     pattern: "api/interop/{action}/{id?}",
     defaults: new { controller = "Interop" });
 
+app.MapControllerRoute(
+    name: "portfolioBuilder",
+    pattern: "api/portfoliobuilder/{action}/{id?}",
+    defaults: new { controller = "PortfolioBuilder" });
+
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
@@ -179,6 +195,9 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+// Start the application
+app.Run();
 
 // Make Program accessible for integration testing
 public partial class Program { }
