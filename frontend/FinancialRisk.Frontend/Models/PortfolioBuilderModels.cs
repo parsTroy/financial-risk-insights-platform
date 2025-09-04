@@ -25,6 +25,10 @@ namespace FinancialRisk.Frontend.Models
         public int Quantity { get; set; }
         public double Value { get; set; }
         public string Sector { get; set; } = string.Empty;
+        public string Exchange { get; set; } = string.Empty;
+        public double MarketCap { get; set; }
+        public double Change { get; set; }
+        public double ChangePercent { get; set; }
         public DateTime AddedDate { get; set; } = DateTime.UtcNow;
     }
 
@@ -97,6 +101,7 @@ namespace FinancialRisk.Frontend.Models
         public double? MaxMarketCap { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
+        public int Limit { get; set; } = 10;
     }
 
     public class AssetSearchResponse

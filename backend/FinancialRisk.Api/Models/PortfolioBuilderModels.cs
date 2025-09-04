@@ -30,7 +30,7 @@ namespace FinancialRisk.Api.Models
         public DateTime AddedDate { get; set; } = DateTime.UtcNow;
     }
 
-    public class Portfolio
+    public class PortfolioBuilder
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
@@ -91,7 +91,7 @@ namespace FinancialRisk.Api.Models
 
     public class PortfolioListResponse
     {
-        public List<Portfolio> Portfolios { get; set; } = new();
+        public List<PortfolioBuilder> Portfolios { get; set; } = new();
         public int TotalCount { get; set; }
         public int Page { get; set; }
         public int PageSize { get; set; }

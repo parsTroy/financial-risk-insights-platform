@@ -33,9 +33,8 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<AssetSearchResponse>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -47,7 +46,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error searching assets");
                 return StatusCode(500, new ApiResponse<AssetSearchResponse>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -57,7 +56,7 @@ namespace FinancialRisk.Api.Controllers
         /// Save a portfolio
         /// </summary>
         [HttpPost("save")]
-        public async Task<ActionResult<ApiResponse<Portfolio>>> SavePortfolio([FromBody] PortfolioSaveRequest request)
+        public async Task<ActionResult<ApiResponse<PortfolioBuilder>>> SavePortfolio([FromBody] PortfolioSaveRequest request)
         {
             try
             {
@@ -65,11 +64,10 @@ namespace FinancialRisk.Api.Controllers
                 
                 if (!ModelState.IsValid)
                 {
-                    return BadRequest(new ApiResponse<Portfolio>
+                    return BadRequest(new ApiResponse<PortfolioBuilder>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -79,9 +77,9 @@ namespace FinancialRisk.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving portfolio");
-                return StatusCode(500, new ApiResponse<Portfolio>
+                return StatusCode(500, new ApiResponse<PortfolioBuilder>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -91,7 +89,7 @@ namespace FinancialRisk.Api.Controllers
         /// Load a portfolio by ID
         /// </summary>
         [HttpPost("load")]
-        public async Task<ActionResult<ApiResponse<Portfolio>>> LoadPortfolio([FromBody] PortfolioLoadRequest request)
+        public async Task<ActionResult<ApiResponse<PortfolioBuilder>>> LoadPortfolio([FromBody] PortfolioLoadRequest request)
         {
             try
             {
@@ -99,11 +97,10 @@ namespace FinancialRisk.Api.Controllers
                 
                 if (!ModelState.IsValid)
                 {
-                    return BadRequest(new ApiResponse<Portfolio>
+                    return BadRequest(new ApiResponse<PortfolioBuilder>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -113,9 +110,9 @@ namespace FinancialRisk.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading portfolio");
-                return StatusCode(500, new ApiResponse<Portfolio>
+                return StatusCode(500, new ApiResponse<PortfolioBuilder>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -135,9 +132,8 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<PortfolioListResponse>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -149,7 +145,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error listing portfolios");
                 return StatusCode(500, new ApiResponse<PortfolioListResponse>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -169,7 +165,7 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<bool>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Portfolio ID is required"
                     });
                 }
@@ -182,7 +178,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error deleting portfolio");
                 return StatusCode(500, new ApiResponse<bool>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -202,7 +198,7 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<PortfolioSummary>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Portfolio ID is required"
                     });
                 }
@@ -215,7 +211,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error getting portfolio summary");
                 return StatusCode(500, new ApiResponse<PortfolioSummary>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -225,7 +221,7 @@ namespace FinancialRisk.Api.Controllers
         /// Validate a portfolio
         /// </summary>
         [HttpPost("validate")]
-        public async Task<ActionResult<ApiResponse<PortfolioValidationResult>>> ValidatePortfolio([FromBody] Portfolio portfolio)
+        public async Task<ActionResult<ApiResponse<PortfolioValidationResult>>> ValidatePortfolio([FromBody] PortfolioBuilder portfolio)
         {
             try
             {
@@ -235,9 +231,8 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<PortfolioValidationResult>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -249,7 +244,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error validating portfolio");
                 return StatusCode(500, new ApiResponse<PortfolioValidationResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -269,9 +264,8 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<PortfolioRebalanceRequest>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -283,7 +277,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error rebalancing portfolio");
                 return StatusCode(500, new ApiResponse<PortfolioRebalanceRequest>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -303,9 +297,8 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<PortfolioPerformanceMetrics>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -317,7 +310,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error getting portfolio performance");
                 return StatusCode(500, new ApiResponse<PortfolioPerformanceMetrics>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -337,9 +330,8 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<PortfolioComparisonResult>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -351,7 +343,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error comparing portfolios");
                 return StatusCode(500, new ApiResponse<PortfolioComparisonResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -375,7 +367,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error getting available sectors");
                 return StatusCode(500, new ApiResponse<List<string>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -399,7 +391,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error getting available exchanges");
                 return StatusCode(500, new ApiResponse<List<string>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }
@@ -419,9 +411,8 @@ namespace FinancialRisk.Api.Controllers
                 {
                     return BadRequest(new ApiResponse<Dictionary<string, object>>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Invalid request data",
-                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                     });
                 }
 
@@ -433,7 +424,7 @@ namespace FinancialRisk.Api.Controllers
                 _logger.LogError(ex, "Error getting market data");
                 return StatusCode(500, new ApiResponse<Dictionary<string, object>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = "Internal server error"
                 });
             }

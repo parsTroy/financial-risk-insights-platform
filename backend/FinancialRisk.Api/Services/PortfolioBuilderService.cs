@@ -6,16 +6,13 @@ namespace FinancialRisk.Api.Services
 {
     public class PortfolioBuilderService : IPortfolioBuilderService
     {
-        private readonly FinancialRiskContext _context;
         private readonly ILogger<PortfolioBuilderService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
 
         public PortfolioBuilderService(
-            FinancialRiskContext context, 
             ILogger<PortfolioBuilderService> logger,
             IHttpClientFactory httpClientFactory)
         {
-            _context = context;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
         }
@@ -50,7 +47,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<AssetSearchResponse>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = response
                 };
             }
@@ -59,20 +56,20 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error searching assets");
                 return new ApiResponse<AssetSearchResponse>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
         }
 
-        public async Task<ApiResponse<Portfolio>> SavePortfolioAsync(PortfolioSaveRequest request)
+        public async Task<ApiResponse<PortfolioBuilder>> SavePortfolioAsync(PortfolioSaveRequest request)
         {
             try
             {
                 _logger.LogInformation("Saving portfolio: {PortfolioName}", request.Name);
 
                 // Validate portfolio
-                var validation = await ValidatePortfolioAsync(new Portfolio
+                var validation = await ValidatePortfolioAsync(new PortfolioBuilder
                 {
                     Name = request.Name,
                     Description = request.Description,
@@ -83,15 +80,14 @@ namespace FinancialRisk.Api.Services
 
                 if (!validation.Data?.IsValid == true)
                 {
-                    return new ApiResponse<Portfolio>
+                    return new ApiResponse<PortfolioBuilder>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Portfolio validation failed",
-                        Errors = validation.Data?.Errors
                     };
                 }
 
-                var portfolio = new Portfolio
+                var portfolio = new PortfolioBuilder
                 {
                     Id = Guid.NewGuid().ToString(),
                     Name = request.Name,
@@ -108,24 +104,24 @@ namespace FinancialRisk.Api.Services
                 // For now, we'll just return the portfolio
                 _logger.LogInformation("Portfolio saved successfully: {PortfolioId}", portfolio.Id);
 
-                return new ApiResponse<Portfolio>
+                return new ApiResponse<PortfolioBuilder>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = portfolio
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving portfolio");
-                return new ApiResponse<Portfolio>
+                return new ApiResponse<PortfolioBuilder>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
         }
 
-        public async Task<ApiResponse<Portfolio>> LoadPortfolioAsync(PortfolioLoadRequest request)
+        public async Task<ApiResponse<PortfolioBuilder>> LoadPortfolioAsync(PortfolioLoadRequest request)
         {
             try
             {
@@ -136,25 +132,25 @@ namespace FinancialRisk.Api.Services
 
                 if (mockPortfolio == null)
                 {
-                    return new ApiResponse<Portfolio>
+                    return new ApiResponse<PortfolioBuilder>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Portfolio not found"
                     };
                 }
 
-                return new ApiResponse<Portfolio>
+                return new ApiResponse<PortfolioBuilder>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = mockPortfolio
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading portfolio");
-                return new ApiResponse<Portfolio>
+                return new ApiResponse<PortfolioBuilder>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -193,7 +189,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<PortfolioListResponse>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = response
                 };
             }
@@ -202,7 +198,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error listing portfolios");
                 return new ApiResponse<PortfolioListResponse>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -219,7 +215,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<bool>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = true
                 };
             }
@@ -228,7 +224,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error deleting portfolio");
                 return new ApiResponse<bool>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -245,7 +241,7 @@ namespace FinancialRisk.Api.Services
                 {
                     return new ApiResponse<PortfolioSummary>
                     {
-                        IsSuccess = false,
+                        Success = false,
                         ErrorMessage = "Portfolio not found"
                     };
                 }
@@ -254,7 +250,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<PortfolioSummary>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = summary
                 };
             }
@@ -263,13 +259,13 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error getting portfolio summary");
                 return new ApiResponse<PortfolioSummary>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
         }
 
-        public async Task<ApiResponse<PortfolioValidationResult>> ValidatePortfolioAsync(Portfolio portfolio)
+        public async Task<ApiResponse<PortfolioValidationResult>> ValidatePortfolioAsync(PortfolioBuilder portfolio)
         {
             try
             {
@@ -333,7 +329,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<PortfolioValidationResult>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = result
                 };
             }
@@ -342,7 +338,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error validating portfolio");
                 return new ApiResponse<PortfolioValidationResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -363,7 +359,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<PortfolioRebalanceRequest>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = request
                 };
             }
@@ -372,7 +368,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error rebalancing portfolio");
                 return new ApiResponse<PortfolioRebalanceRequest>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -403,7 +399,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<PortfolioPerformanceMetrics>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = metrics
                 };
             }
@@ -412,7 +408,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error getting portfolio performance");
                 return new ApiResponse<PortfolioPerformanceMetrics>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -444,7 +440,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<PortfolioComparisonResult>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = result
                 };
             }
@@ -453,7 +449,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error comparing portfolios");
                 return new ApiResponse<PortfolioComparisonResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -474,7 +470,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<List<string>>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = sectors
                 };
             }
@@ -483,7 +479,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error getting available sectors");
                 return new ApiResponse<List<string>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -502,7 +498,7 @@ namespace FinancialRisk.Api.Services
 
                 return new ApiResponse<List<string>>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = exchanges
                 };
             }
@@ -511,7 +507,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error getting available exchanges");
                 return new ApiResponse<List<string>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -534,13 +530,13 @@ namespace FinancialRisk.Api.Services
                         Change = Math.Round((random.NextDouble() - 0.5) * 10, 2),
                         ChangePercent = Math.Round((random.NextDouble() - 0.5) * 5, 2),
                         Volume = random.Next(1000000, 10000000),
-                        MarketCap = random.Next(1000000000, 1000000000000)
+                        MarketCap = (long)random.Next(1000000000, 1000000000)
                     };
                 }
 
                 return new ApiResponse<Dictionary<string, object>>
                 {
-                    IsSuccess = true,
+                    Success = true,
                     Data = marketData
                 };
             }
@@ -549,7 +545,7 @@ namespace FinancialRisk.Api.Services
                 _logger.LogError(ex, "Error getting market data");
                 return new ApiResponse<Dictionary<string, object>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -570,11 +566,11 @@ namespace FinancialRisk.Api.Services
             };
         }
 
-        private Portfolio? GetMockPortfolio(string portfolioId)
+        private PortfolioBuilder? GetMockPortfolio(string portfolioId)
         {
             if (portfolioId == "mock-portfolio-1")
             {
-                return new Portfolio
+                return new PortfolioBuilder
                 {
                     Id = portfolioId,
                     Name = "Tech Growth Portfolio",
@@ -596,12 +592,12 @@ namespace FinancialRisk.Api.Services
             return null;
         }
 
-        private List<Portfolio> GetMockPortfolios()
+        private List<PortfolioBuilder> GetMockPortfolios()
         {
-            return new List<Portfolio>
+            return new List<PortfolioBuilder>
             {
                 GetMockPortfolio("mock-portfolio-1")!,
-                new Portfolio
+                new PortfolioBuilder
                 {
                     Id = "mock-portfolio-2",
                     Name = "Conservative Portfolio",
@@ -620,7 +616,7 @@ namespace FinancialRisk.Api.Services
             };
         }
 
-        private PortfolioSummary CalculatePortfolioSummary(Portfolio portfolio)
+        private PortfolioSummary CalculatePortfolioSummary(PortfolioBuilder portfolio)
         {
             var totalWeight = portfolio.Assets.Sum(a => a.Weight);
             var expectedReturn = portfolio.Assets.Sum(a => (a.Weight / 100.0) * a.ExpectedReturn);

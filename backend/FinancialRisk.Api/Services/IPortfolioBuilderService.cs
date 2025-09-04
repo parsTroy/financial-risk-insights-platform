@@ -5,12 +5,12 @@ namespace FinancialRisk.Api.Services
     public interface IPortfolioBuilderService
     {
         Task<ApiResponse<AssetSearchResponse>> SearchAssetsAsync(AssetSearchRequest request);
-        Task<ApiResponse<Portfolio>> SavePortfolioAsync(PortfolioSaveRequest request);
-        Task<ApiResponse<Portfolio>> LoadPortfolioAsync(PortfolioLoadRequest request);
+        Task<ApiResponse<PortfolioBuilder>> SavePortfolioAsync(PortfolioSaveRequest request);
+        Task<ApiResponse<PortfolioBuilder>> LoadPortfolioAsync(PortfolioLoadRequest request);
         Task<ApiResponse<PortfolioListResponse>> ListPortfoliosAsync(PortfolioListRequest request);
         Task<ApiResponse<bool>> DeletePortfolioAsync(string portfolioId);
         Task<ApiResponse<PortfolioSummary>> GetPortfolioSummaryAsync(string portfolioId);
-        Task<ApiResponse<PortfolioValidationResult>> ValidatePortfolioAsync(Portfolio portfolio);
+        Task<ApiResponse<PortfolioValidationResult>> ValidatePortfolioAsync(PortfolioBuilder portfolio);
         Task<ApiResponse<PortfolioRebalanceRequest>> RebalancePortfolioAsync(PortfolioRebalanceRequest request);
         Task<ApiResponse<PortfolioPerformanceMetrics>> GetPortfolioPerformanceAsync(string portfolioId, DateTime startDate, DateTime endDate);
         Task<ApiResponse<PortfolioComparisonResult>> ComparePortfoliosAsync(PortfolioComparisonRequest request);
