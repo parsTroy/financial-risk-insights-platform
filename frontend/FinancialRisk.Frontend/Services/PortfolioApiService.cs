@@ -18,7 +18,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Optimizing portfolio with method: {Method}", request.Method);
-                return await _apiService.PostAsync<ApiResponse<PortfolioOptimizationResult>>("portfolio/optimize", request);
+                return await _apiService.PostAsync<ApiResponse<PortfolioOptimizationResult>>("api/PortfolioOptimization/optimize", request);
             }
             catch (Exception ex)
             {
@@ -36,7 +36,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Calculating efficient frontier with {NumPoints} points", request.NumPoints);
-                return await _apiService.PostAsync<ApiResponse<EfficientFrontierResult>>("portfolio/efficient-frontier", request);
+                return await _apiService.PostAsync<ApiResponse<EfficientFrontierResult>>("api/PortfolioOptimization/efficient-frontier", request);
             }
             catch (Exception ex)
             {
@@ -54,7 +54,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Performing risk budgeting");
-                return await _apiService.PostAsync<ApiResponse<RiskBudgetingResult>>("portfolio/risk-budgeting", request);
+                return await _apiService.PostAsync<ApiResponse<RiskBudgetingResult>>("api/PortfolioOptimization/risk-budgeting", request);
             }
             catch (Exception ex)
             {
@@ -72,7 +72,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Performing Black-Litterman optimization");
-                return await _apiService.PostAsync<ApiResponse<BlackLittermanResult>>("portfolio/black-litterman", request);
+                return await _apiService.PostAsync<ApiResponse<BlackLittermanResult>>("api/PortfolioOptimization/black-litterman", request);
             }
             catch (Exception ex)
             {
@@ -90,7 +90,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Getting available optimization methods");
-                return await _apiService.GetAsync<ApiResponse<List<string>>>("portfolio/methods");
+                return await _apiService.GetAsync<ApiResponse<List<string>>>("api/PortfolioOptimization/methods");
             }
             catch (Exception ex)
             {
@@ -108,7 +108,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Getting available constraints");
-                return await _apiService.GetAsync<ApiResponse<List<string>>>("portfolio/constraints");
+                return await _apiService.GetAsync<ApiResponse<List<string>>>("api/PortfolioOptimization/constraints");
             }
             catch (Exception ex)
             {
@@ -126,7 +126,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Getting optimization history for portfolio: {PortfolioName}", portfolioName);
-                return await _apiService.GetAsync<ApiResponse<object>>($"portfolio/history/{portfolioName}");
+                return await _apiService.GetAsync<ApiResponse<object>>($"api/PortfolioOptimization/history/{portfolioName}");
             }
             catch (Exception ex)
             {
@@ -144,7 +144,7 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Getting optimization statistics");
-                return await _apiService.GetAsync<ApiResponse<object>>("portfolio/stats");
+                return await _apiService.GetAsync<ApiResponse<object>>("api/PortfolioOptimization/stats");
             }
             catch (Exception ex)
             {

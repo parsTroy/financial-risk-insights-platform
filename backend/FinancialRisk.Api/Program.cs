@@ -59,8 +59,8 @@ builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options 
 // Register VaR calculation service (temporarily disabled for testing)
 // builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, FinancialRisk.Api.Services.VaRCalculationService>();
 
-// Register portfolio optimization service (temporarily disabled for testing)
-// builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
+// Register portfolio optimization service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
 
 // Register HTTP client factory
 builder.Services.AddHttpClient();
