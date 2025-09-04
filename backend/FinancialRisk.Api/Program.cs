@@ -50,6 +50,22 @@ builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, Fi
 // Register portfolio optimization service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
 
+// Register Python/C++ interop services
+builder.Services.Configure<FinancialRisk.Api.Services.InteropConfiguration>(options =>
+{
+    options.EnablePythonNet = true;
+    options.EnableGrpc = true;
+    options.EnableCpp = true;
+    options.PreferredMethod = "auto";
+    options.EnableFallback = true;
+    options.EnableMetricsAggregation = true;
+});
+
+builder.Services.AddScoped<FinancialRisk.Api.Services.PythonInteropService>();
+builder.Services.AddScoped<FinancialRisk.Api.Services.GrpcPythonService>();
+builder.Services.AddScoped<FinancialRisk.Api.Services.CppInteropService>();
+builder.Services.AddScoped<FinancialRisk.Api.Services.IPythonInteropService, FinancialRisk.Api.Services.UnifiedInteropService>();
+
 var app = builder.Build();
 
 // Log configuration to verify environment variables are loaded
@@ -139,6 +155,11 @@ app.MapControllerRoute(
     name: "portfolioOptimization",
     pattern: "api/portfolio/{action}/{id?}",
     defaults: new { controller = "PortfolioOptimization" });
+
+app.MapControllerRoute(
+    name: "interop",
+    pattern: "api/interop/{action}/{id?}",
+    defaults: new { controller = "Interop" });
 
 var summaries = new[]
 {

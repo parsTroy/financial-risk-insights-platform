@@ -23,6 +23,7 @@ endif()
 add_library(RiskCalculations SHARED RiskCalculations.cpp)
 add_library(VaRCalculations SHARED VaRCalculations.cpp)
 add_library(MonteCarloEngine SHARED MonteCarloEngine.cpp)
+add_library(QuantEngine SHARED QuantEngine.cpp)
 
 # Set output directory
 set_target_properties(RiskCalculations PROPERTIES
@@ -43,6 +44,12 @@ set_target_properties(MonteCarloEngine PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )
 
+set_target_properties(QuantEngine PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+)
+
 # Platform-specific settings
 if(WIN32)
     set_target_properties(RiskCalculations PROPERTIES
@@ -55,6 +62,10 @@ if(WIN32)
     )
     set_target_properties(MonteCarloEngine PROPERTIES
         OUTPUT_NAME "MonteCarloEngine"
+        SUFFIX ".dll"
+    )
+    set_target_properties(QuantEngine PROPERTIES
+        OUTPUT_NAME "QuantEngine"
         SUFFIX ".dll"
     )
 elseif(APPLE)
@@ -70,6 +81,10 @@ elseif(APPLE)
         OUTPUT_NAME "MonteCarloEngine"
         SUFFIX ".dylib"
     )
+    set_target_properties(QuantEngine PROPERTIES
+        OUTPUT_NAME "QuantEngine"
+        SUFFIX ".dylib"
+    )
 else()
     set_target_properties(RiskCalculations PROPERTIES
         OUTPUT_NAME "RiskCalculations"
@@ -83,14 +98,18 @@ else()
         OUTPUT_NAME "MonteCarloEngine"
         SUFFIX ".so"
     )
+    set_target_properties(QuantEngine PROPERTIES
+        OUTPUT_NAME "QuantEngine"
+        SUFFIX ".so"
+    )
 endif()
 
 # Install targets
-install(TARGETS RiskCalculations VaRCalculations MonteCarloEngine
+install(TARGETS RiskCalculations VaRCalculations MonteCarloEngine QuantEngine
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
 
 # Install headers
-install(FILES RiskCalculations.h VaRCalculations.h MonteCarloEngine.h DESTINATION include)
+install(FILES RiskCalculations.h VaRCalculations.h MonteCarloEngine.h QuantEngine.h DESTINATION include)
