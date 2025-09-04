@@ -1,0 +1,219 @@
+@page "/var-calculator"
+@using FinancialRisk.Frontend.Models
+@using FinancialRisk.Frontend.Services
+@inject VaRApiService VaRService
+@inject ILogger<VaRCalculator> Logger
+
+<PageTitle>VaR Calculator</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 mb-4">Value at Risk Calculator</h1>
+            <p class="lead">Calculate Value at Risk (VaR) and Conditional Value at Risk (CVaR) for your portfolio.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">VaR Calculation Parameters</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@varRequest" OnValidSubmit="@CalculateVaR">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="confidenceLevel" class="form-label">Confidence Level</label>
+                            <InputNumber @bind-Value="varRequest.ConfidenceLevel" 
+                                       class="form-control" 
+                                       id="confidenceLevel" 
+                                       min="0.01" 
+                                       max="0.99" 
+                                       step="0.01" />
+                            <div class="form-text">Enter confidence level (e.g., 0.95 for 95%)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="timeHorizon" class="form-label">Time Horizon (Days)</label>
+                            <InputNumber @bind-Value="varRequest.TimeHorizon" 
+                                       class="form-control" 
+                                       id="timeHorizon" 
+                                       min="1" 
+                                       max="365" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="method" class="form-label">Calculation Method</label>
+                            <InputSelect @bind-Value="varRequest.Method" class="form-select" id="method">
+                                <option value="historical">Historical Simulation</option>
+                                <option value="parametric">Parametric (Normal)</option>
+                                <option value="monte_carlo">Monte Carlo</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="returns" class="form-label">Historical Returns (CSV format)</label>
+                            <InputTextArea @bind-Value="returnsInput" 
+                                         class="form-control" 
+                                         id="returns" 
+                                         rows="5" 
+                                         placeholder="Enter returns separated by commas, e.g., 0.01, -0.02, 0.03, ..." />
+                            <div class="form-text">Enter historical returns as comma-separated values</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@isCalculating">
+                            @if (isCalculating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Calculating...</span>
+                            }
+                            else
+                            {
+                                <span>Calculate VaR</span>
+                            }
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">VaR Results</h5>
+                </div>
+                <div class="card-body">
+                    @if (varResult != null)
+                    {
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Value at Risk (VaR)</h6>
+                                    <h4 class="text-danger mb-0">@(varResult.VaR.ToString("P4"))</h4>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Conditional VaR (CVaR)</h6>
+                                    <h4 class="text-danger mb-0">@(varResult.CVaR.ToString("P4"))</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">Confidence Level:</small>
+                                <div>@(varResult.ConfidenceLevel.ToString("P2"))</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Method:</small>
+                                <div>@varResult.Method</div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <small class="text-muted">Sample Size:</small>
+                                <div>@varResult.SampleSize</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Mean Return:</small>
+                                <div>@(varResult.MeanReturn.ToString("P4"))</div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <small class="text-muted">Standard Deviation:</small>
+                                <div>@(varResult.StandardDeviation.ToString("P4"))</div>
+                            </div>
+                        </div>
+                    }
+                    else if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <h6 class="alert-heading">Calculation Error</h6>
+                            <p class="mb-0">@errorMessage</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted">
+                            <i class="oi oi-calculator display-1"></i>
+                            <p class="mt-3">Enter parameters and click "Calculate VaR" to see results</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private VaRCalculationRequest varRequest = new()
+    {
+        ConfidenceLevel = 0.95,
+        TimeHorizon = 1,
+        Method = "historical"
+    };
+
+    private VaRCalculationResult? varResult;
+    private string? errorMessage;
+    private bool isCalculating = false;
+    private string returnsInput = "";
+
+    private async Task CalculateVaR()
+    {
+        try
+        {
+            isCalculating = true;
+            errorMessage = null;
+            varResult = null;
+
+            // Parse returns from input
+            if (string.IsNullOrWhiteSpace(returnsInput))
+            {
+                errorMessage = "Please enter historical returns.";
+                return;
+            }
+
+            var returns = returnsInput.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Select(s => double.TryParse(s, out var value) ? value : 0)
+                .ToList();
+
+            if (returns.Count == 0)
+            {
+                errorMessage = "Please enter valid numerical returns.";
+                return;
+            }
+
+            varRequest.Returns = returns;
+
+            var response = await VaRService.CalculateVaRAsync(varRequest);
+            
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                varResult = response.Data;
+            }
+            else
+            {
+                errorMessage = response?.ErrorMessage ?? "An error occurred while calculating VaR.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error calculating VaR");
+            errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            isCalculating = false;
+        }
+    }
+}
