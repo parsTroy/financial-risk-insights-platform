@@ -22,6 +22,7 @@ endif()
 # Create shared libraries
 add_library(RiskCalculations SHARED RiskCalculations.cpp)
 add_library(VaRCalculations SHARED VaRCalculations.cpp)
+add_library(MonteCarloEngine SHARED MonteCarloEngine.cpp)
 
 # Set output directory
 set_target_properties(RiskCalculations PROPERTIES
@@ -31,6 +32,12 @@ set_target_properties(RiskCalculations PROPERTIES
 )
 
 set_target_properties(VaRCalculations PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+)
+
+set_target_properties(MonteCarloEngine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
@@ -46,6 +53,10 @@ if(WIN32)
         OUTPUT_NAME "VaRCalculations"
         SUFFIX ".dll"
     )
+    set_target_properties(MonteCarloEngine PROPERTIES
+        OUTPUT_NAME "MonteCarloEngine"
+        SUFFIX ".dll"
+    )
 elseif(APPLE)
     set_target_properties(RiskCalculations PROPERTIES
         OUTPUT_NAME "RiskCalculations"
@@ -53,6 +64,10 @@ elseif(APPLE)
     )
     set_target_properties(VaRCalculations PROPERTIES
         OUTPUT_NAME "VaRCalculations"
+        SUFFIX ".dylib"
+    )
+    set_target_properties(MonteCarloEngine PROPERTIES
+        OUTPUT_NAME "MonteCarloEngine"
         SUFFIX ".dylib"
     )
 else()
@@ -64,14 +79,18 @@ else()
         OUTPUT_NAME "VaRCalculations"
         SUFFIX ".so"
     )
+    set_target_properties(MonteCarloEngine PROPERTIES
+        OUTPUT_NAME "MonteCarloEngine"
+        SUFFIX ".so"
+    )
 endif()
 
 # Install targets
-install(TARGETS RiskCalculations VaRCalculations
+install(TARGETS RiskCalculations VaRCalculations MonteCarloEngine
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
 
 # Install headers
-install(FILES RiskCalculations.h VaRCalculations.h DESTINATION include)
+install(FILES RiskCalculations.h VaRCalculations.h MonteCarloEngine.h DESTINATION include)

@@ -161,4 +161,115 @@ namespace FinancialRisk.Api.Models
         public DateTime BacktestDate { get; set; }
         public DateTime CreatedAt { get; set; }
     }
+
+    // Monte Carlo specific models
+    public class MonteCarloSimulationRequest
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public string DistributionType { get; set; } = "Normal";
+        public int NumSimulations { get; set; } = 10000;
+        public int TimeHorizon { get; set; } = 1;
+        public List<double> ConfidenceLevels { get; set; } = new() { 0.95, 0.99 };
+        public bool UseAntitheticVariates { get; set; } = false;
+        public bool UseControlVariates { get; set; } = false;
+        public bool UseQuasiMonteCarlo { get; set; } = false;
+        public int? Seed { get; set; }
+        public Dictionary<string, object>? CustomParameters { get; set; }
+    }
+
+    public class MonteCarloPortfolioSimulationRequest
+    {
+        public string PortfolioName { get; set; } = string.Empty;
+        public List<string> Symbols { get; set; } = new();
+        public List<decimal> Weights { get; set; } = new();
+        public string DistributionType { get; set; } = "Normal";
+        public int NumSimulations { get; set; } = 10000;
+        public int TimeHorizon { get; set; } = 1;
+        public List<double> ConfidenceLevels { get; set; } = new() { 0.95, 0.99 };
+        public bool UseCorrelation { get; set; } = true;
+        public int? Seed { get; set; }
+        public Dictionary<string, object>? CustomParameters { get; set; }
+    }
+
+    public class MonteCarloStressTestRequest
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public string ScenarioName { get; set; } = string.Empty;
+        public string ScenarioType { get; set; } = "VolatilityShock";
+        public double StressFactor { get; set; } = 1.5;
+        public string DistributionType { get; set; } = "Normal";
+        public int NumSimulations { get; set; } = 10000;
+        public List<double> ConfidenceLevels { get; set; } = new() { 0.95, 0.99 };
+        public Dictionary<string, object>? CustomParameters { get; set; }
+    }
+
+    public class MonteCarloSimulationResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string Symbol { get; set; } = string.Empty;
+        public string DistributionType { get; set; } = string.Empty;
+        public int NumSimulations { get; set; }
+        public int TimeHorizon { get; set; }
+        public Dictionary<double, double> VaRValues { get; set; } = new();
+        public Dictionary<double, double> CVaRValues { get; set; } = new();
+        public double ExpectedValue { get; set; }
+        public double StandardDeviation { get; set; }
+        public double Skewness { get; set; }
+        public double Kurtosis { get; set; }
+        public Dictionary<double, double> Percentiles { get; set; } = new();
+        public List<double> SimulatedReturns { get; set; } = new();
+        public List<double> SimulatedPrices { get; set; } = new();
+        public Dictionary<string, object> SimulationMetadata { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
+
+    public class MonteCarloPortfolioSimulationResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string PortfolioName { get; set; } = string.Empty;
+        public string DistributionType { get; set; } = string.Empty;
+        public int NumSimulations { get; set; }
+        public int TimeHorizon { get; set; }
+        public Dictionary<double, double> PortfolioVaRValues { get; set; } = new();
+        public Dictionary<double, double> PortfolioCVaRValues { get; set; } = new();
+        public double ExpectedReturn { get; set; }
+        public double PortfolioVolatility { get; set; }
+        public List<MonteCarloSimulationResult> AssetResults { get; set; } = new();
+        public List<double> VaRContributions { get; set; } = new();
+        public List<double> MarginalVaR { get; set; } = new();
+        public List<double> ComponentVaR { get; set; } = new();
+        public double DiversificationRatio { get; set; }
+        public List<double> PortfolioReturns { get; set; } = new();
+        public List<double> PortfolioValues { get; set; } = new();
+        public Dictionary<string, object> SimulationMetadata { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
+
+    public class MonteCarloStressTestResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string Symbol { get; set; } = string.Empty;
+        public string ScenarioName { get; set; } = string.Empty;
+        public string ScenarioType { get; set; } = string.Empty;
+        public double StressFactor { get; set; }
+        public Dictionary<string, MonteCarloSimulationResult> ScenarioResults { get; set; } = new();
+        public Dictionary<string, double> VaRComparison { get; set; } = new();
+        public Dictionary<string, double> CVaRComparison { get; set; } = new();
+        public DateTime CalculationDate { get; set; }
+    }
+
+    public class MonteCarloComparisonResult
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public Dictionary<string, double> VaRResults { get; set; } = new();
+        public Dictionary<string, double> CVaRResults { get; set; } = new();
+        public Dictionary<string, double> ExecutionTimes { get; set; } = new();
+        public Dictionary<string, double> AccuracyMetrics { get; set; } = new();
+        public string BestMethod { get; set; } = string.Empty;
+        public string BestDistribution { get; set; } = string.Empty;
+        public DateTime ComparisonDate { get; set; }
+    }
 }

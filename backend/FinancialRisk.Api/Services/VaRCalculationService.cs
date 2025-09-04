@@ -43,6 +43,27 @@ namespace FinancialRisk.Api.Services
         private static extern void CalculateVaRConfidenceIntervals(double[] returns, int length, double confidenceLevel, 
                                                                  int bootstrapSamples, out double lowerBound, out double upperBound);
 
+        // C++ library imports for Monte Carlo simulation
+        [DllImport("MonteCarloEngine.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern double CalculateMonteCarloVaR(double[] returns, int length, double confidenceLevel, 
+                                                          int numSimulations, int distributionType, double[] parameters, int paramLength);
+
+        [DllImport("MonteCarloEngine.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern double CalculatePortfolioMonteCarloVaR(double[][] assetReturns, int[] lengths, int numAssets,
+                                                                   double[] weights, double confidenceLevel, int numSimulations,
+                                                                   double[][] correlationMatrix, int distributionType);
+
+        [DllImport("MonteCarloEngine.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void RunMonteCarloSimulation(double[] returns, int length, double confidenceLevel,
+                                                         int numSimulations, int distributionType, double[] parameters, int paramLength,
+                                                         double[] result);
+
+        [DllImport("MonteCarloEngine.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void RunPortfolioMonteCarloSimulation(double[][] assetReturns, int[] lengths, int numAssets,
+                                                                  double[] weights, double confidenceLevel, int numSimulations,
+                                                                  double[][] correlationMatrix, int distributionType,
+                                                                  double[] result);
+
         public VaRCalculationService(
             ILogger<VaRCalculationService> logger,
             IFinancialDataService financialDataService,
@@ -436,6 +457,110 @@ namespace FinancialRisk.Api.Services
         {
             try
             {
+                _logger.LogInformation("Starting Monte Carlo VaR calculation for {Symbol} with {Simulations} simulations", 
+                    request.Symbol, request.SimulationCount);
+
+                // Try C++ implementation first for better performance
+                VaRCalculation result;
+                try
+                {
+                    result = await CalculateMonteCarloVaRCppAsync(request, returns);
+                    if (result != null)
+                    {
+                        _logger.LogInformation("C++ Monte Carlo calculation completed for {Symbol}", request.Symbol);
+                        return result;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "C++ Monte Carlo calculation failed for {Symbol}, falling back to Python", request.Symbol);
+                }
+
+                // Fallback to Python implementation
+                result = await CalculateMonteCarloVaRPythonAsync(request, returns);
+                _logger.LogInformation("Python Monte Carlo calculation completed for {Symbol}", request.Symbol);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in Monte Carlo VaR calculation for {Symbol}", request.Symbol);
+                throw;
+            }
+        }
+
+        private async Task<VaRCalculation> CalculateMonteCarloVaRCppAsync(VaRCalculationRequest request, double[] returns)
+        {
+            try
+            {
+                // Map distribution type to C++ enum
+                int distributionType = request.DistributionType.ToLower() switch
+                {
+                    "normal" => 0,
+                    "t_student" => 1,
+                    "garch" => 2,
+                    "copula" => 3,
+                    "mixture" => 4,
+                    _ => 0
+                };
+
+                // Prepare parameters array
+                var parameters = new double[] { 0.0, 1.0 }; // Default normal distribution parameters
+                if (request.Parameters != null)
+                {
+                    var paramList = new List<double>();
+                    foreach (var param in request.Parameters.Values)
+                    {
+                        if (param is double d)
+                            paramList.Add(d);
+                    }
+                    if (paramList.Count > 0)
+                    {
+                        parameters = paramList.ToArray();
+                    }
+                }
+
+                // Call C++ Monte Carlo function
+                var var95 = CalculateMonteCarloVaR(returns, returns.Length, 0.95, 
+                    request.SimulationCount, distributionType, parameters, parameters.Length);
+                var var99 = CalculateMonteCarloVaR(returns, returns.Length, 0.99, 
+                    request.SimulationCount, distributionType, parameters, parameters.Length);
+
+                if (var95 < 0 || var99 < 0) // Error indicator from C++
+                {
+                    throw new Exception("C++ Monte Carlo calculation returned error");
+                }
+
+                // Calculate CVaR using Python for now (can be added to C++ later)
+                var cvar95 = await CalculateCVaRUsingPython(returns, 0.95);
+                var cvar99 = await CalculateCVaRUsingPython(returns, 0.99);
+
+                return new VaRCalculation
+                {
+                    Symbol = request.Symbol,
+                    CalculationType = "MonteCarlo",
+                    DistributionType = request.DistributionType,
+                    ConfidenceLevel = 0.95,
+                    VaR = var95,
+                    CVaR = cvar95,
+                    SampleSize = returns.Length,
+                    SimulationCount = request.SimulationCount,
+                    TimeHorizon = request.TimeHorizon,
+                    CalculationDate = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    Parameters = JsonSerializer.Serialize(request.Parameters)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "C++ Monte Carlo calculation failed for {Symbol}", request.Symbol);
+                throw;
+            }
+        }
+
+        private async Task<VaRCalculation> CalculateMonteCarloVaRPythonAsync(VaRCalculationRequest request, double[] returns)
+        {
+            try
+            {
                 // Call Python Monte Carlo simulation
                 var pythonScript = Path.Combine(Directory.GetCurrentDirectory(), "Services", "monte_carlo_var.py");
                 var pythonArgs = $"{pythonScript} {request.Symbol} {JsonSerializer.Serialize(returns)} {request.DistributionType} {request.SimulationCount}";
@@ -464,8 +589,13 @@ namespace FinancialRisk.Api.Services
                     throw new Exception($"Python simulation failed: {error}");
                 }
 
-                // Parse Python output (simplified - in practice, use proper JSON parsing)
-                var result = JsonSerializer.Deserialize<Dictionary<string, double>>(output);
+                // Parse Python output
+                var result = JsonSerializer.Deserialize<Dictionary<string, object>>(output);
+                
+                if (result == null || !result.ContainsKey("success") || !(bool)result["success"])
+                {
+                    throw new Exception($"Python simulation failed: {result?.GetValueOrDefault("error", "Unknown error")}");
+                }
 
                 return new VaRCalculation
                 {
@@ -473,8 +603,8 @@ namespace FinancialRisk.Api.Services
                     CalculationType = "MonteCarlo",
                     DistributionType = request.DistributionType,
                     ConfidenceLevel = 0.95,
-                    VaR = result.GetValueOrDefault("var_95", 0.0),
-                    CVaR = result.GetValueOrDefault("cvar_95", 0.0),
+                    VaR = Convert.ToDouble(result.GetValueOrDefault("var_95", 0.0)),
+                    CVaR = Convert.ToDouble(result.GetValueOrDefault("cvar_95", 0.0)),
                     SampleSize = returns.Length,
                     SimulationCount = request.SimulationCount,
                     TimeHorizon = request.TimeHorizon,
@@ -485,9 +615,53 @@ namespace FinancialRisk.Api.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in Monte Carlo VaR calculation for {Symbol}", request.Symbol);
+                _logger.LogError(ex, "Python Monte Carlo calculation failed for {Symbol}", request.Symbol);
                 throw;
             }
+        }
+
+        private async Task<double> CalculateCVaRUsingPython(double[] returns, double confidenceLevel)
+        {
+            try
+            {
+                // Simple CVaR calculation using Python
+                var pythonScript = Path.Combine(Directory.GetCurrentDirectory(), "Services", "monte_carlo_var.py");
+                var pythonArgs = $"{pythonScript} CVaR {JsonSerializer.Serialize(returns)} normal 1000";
+
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "python3",
+                        Arguments = pythonArgs,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                var output = await process.StandardOutput.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode == 0)
+                {
+                    var result = JsonSerializer.Deserialize<Dictionary<string, object>>(output);
+                    var key = confidenceLevel == 0.95 ? "cvar_95" : "cvar_99";
+                    return Convert.ToDouble(result?.GetValueOrDefault(key, 0.0));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to calculate CVaR using Python");
+            }
+
+            // Fallback to simple calculation
+            var sortedReturns = returns.OrderBy(r => r).ToArray();
+            var varIndex = (int)((1 - confidenceLevel) * sortedReturns.Length);
+            var tailReturns = sortedReturns.Take(varIndex);
+            return tailReturns.Any() ? -tailReturns.Average() : 0.0;
         }
 
         private (PortfolioVaRCalculation portfolioResult, List<VaRAssetContribution> contributions) CalculateHistoricalPortfolioVaR(
@@ -545,9 +719,113 @@ namespace FinancialRisk.Api.Services
         private async Task<(PortfolioVaRCalculation portfolioResult, List<VaRAssetContribution> contributions)> CalculateMonteCarloPortfolioVaRAsync(
             PortfolioVaRCalculationRequest request, Dictionary<string, double[]> assetData)
         {
-            // Similar to single asset Monte Carlo but for portfolio
-            // This would call Python with portfolio data
-            throw new NotImplementedException("Portfolio Monte Carlo VaR not yet implemented");
+            try
+            {
+                _logger.LogInformation("Starting portfolio Monte Carlo VaR calculation for {PortfolioName} with {Simulations} simulations", 
+                    request.PortfolioName, request.SimulationCount);
+
+                // Prepare portfolio data for Python
+                var portfolioData = new
+                {
+                    assets = request.Symbols.Select((symbol, index) => new
+                    {
+                        symbol = symbol,
+                        returns = assetData.ContainsKey(symbol) ? assetData[symbol] : new double[0],
+                        initial_price = 100.0 // Default initial price
+                    }).ToList(),
+                    weights = request.Weights,
+                    num_simulations = request.SimulationCount,
+                    confidence_levels = request.ConfidenceLevels,
+                    distribution_type = request.DistributionType
+                };
+
+                // Call Python portfolio Monte Carlo simulation
+                var pythonScript = Path.Combine(Directory.GetCurrentDirectory(), "Services", "monte_carlo_engine.py");
+                var portfolioJson = JsonSerializer.Serialize(portfolioData);
+                var pythonArgs = $"{pythonScript} portfolio \"{portfolioJson}\"";
+
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "python3",
+                        Arguments = pythonArgs,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogError("Python portfolio Monte Carlo simulation failed: {Error}", error);
+                    throw new Exception($"Python portfolio simulation failed: {error}");
+                }
+
+                // Parse Python output
+                var result = JsonSerializer.Deserialize<Dictionary<string, object>>(output);
+                
+                if (result == null || !result.ContainsKey("success") || !(bool)result["success"])
+                {
+                    throw new Exception($"Python portfolio simulation failed: {result?.GetValueOrDefault("error", "Unknown error")}");
+                }
+
+                // Create portfolio result
+                var portfolioResult = new PortfolioVaRCalculation
+                {
+                    PortfolioName = request.PortfolioName,
+                    CalculationType = "MonteCarlo",
+                    DistributionType = request.DistributionType,
+                    ConfidenceLevel = 0.95,
+                    PortfolioVaR = Convert.ToDouble(result.GetValueOrDefault("portfolio_var_95", 0.0)),
+                    PortfolioCVaR = Convert.ToDouble(result.GetValueOrDefault("portfolio_cvar_95", 0.0)),
+                    SampleSize = assetData.Values.FirstOrDefault()?.Length ?? 0,
+                    SimulationCount = request.SimulationCount,
+                    TimeHorizon = request.TimeHorizon,
+                    CalculationDate = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    Parameters = JsonSerializer.Serialize(request.Parameters)
+                };
+
+                // Create asset contributions
+                var contributions = new List<VaRAssetContribution>();
+                var varContributions = result.GetValueOrDefault("var_contributions", new List<object>()) as List<object>;
+                
+                for (int i = 0; i < request.Symbols.Count; i++)
+                {
+                    var symbol = request.Symbols[i];
+                    var weight = (double)request.Weights[i];
+                    var contribution = varContributions != null && i < varContributions.Count 
+                        ? Convert.ToDouble(varContributions[i]) 
+                        : 0.0;
+
+                    contributions.Add(new VaRAssetContribution
+                    {
+                        PortfolioVaRCalculationId = 0, // Will be set when saved
+                        Symbol = symbol,
+                        Weight = weight,
+                        VaRContribution = contribution,
+                        CVaRContribution = contribution, // Simplified
+                        MarginalVaR = contribution / weight, // Simplified
+                        ComponentVaR = contribution,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                _logger.LogInformation("Portfolio Monte Carlo calculation completed for {PortfolioName}", request.PortfolioName);
+                return (portfolioResult, contributions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in portfolio Monte Carlo VaR calculation for {PortfolioName}", request.PortfolioName);
+                throw;
+            }
         }
 
         private double[] CalculatePortfolioReturns(Dictionary<string, double[]> assetData, List<decimal> weights)
