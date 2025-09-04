@@ -50,6 +50,9 @@ builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, Fi
 // Register portfolio optimization service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
 
+// Register portfolio builder service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioBuilderService, FinancialRisk.Api.Services.PortfolioBuilderService>();
+
 // Register Python/C++ interop services
 builder.Services.Configure<FinancialRisk.Api.Services.InteropConfiguration>(options =>
 {
@@ -160,6 +163,11 @@ app.MapControllerRoute(
     name: "interop",
     pattern: "api/interop/{action}/{id?}",
     defaults: new { controller = "Interop" });
+
+app.MapControllerRoute(
+    name: "portfolioBuilder",
+    pattern: "api/portfolio/{action}/{id?}",
+    defaults: new { controller = "PortfolioBuilder" });
 
 var summaries = new[]
 {

@@ -28,6 +28,7 @@ builder.Services.AddHttpClient("ApiClient", client =>
 builder.Services.AddScoped<ApiService>();
 builder.Services.AddScoped<VaRApiService>();
 builder.Services.AddScoped<PortfolioApiService>();
+builder.Services.AddScoped<PortfolioBuilderApiService>();
 
 // Configure JSON serialization
 builder.Services.Configure<JsonSerializerOptions>(options =>
