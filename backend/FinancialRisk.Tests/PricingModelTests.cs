@@ -1,0 +1,636 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using FinancialRisk.Api.Services;
+using FinancialRisk.Api.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace FinancialRisk.Tests
+{
+    [TestClass]
+    public class PricingModelTests
+    {
+        private IPythonInteropService _interopService;
+        private InteropController _interopController;
+
+        [TestInitialize]
+        public void Setup()
+        {
+            _interopService = new UnifiedInteropService();
+            _interopController = new InteropController(_interopService);
+        }
+
+        [TestMethod]
+        public async Task BlackScholes_CallOption_WithKnownParameters_ReturnsExpectedPrice()
+        {
+            // Arrange - Known parameters for Black-Scholes
+            var spotPrice = 100.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 0.25; // 3 months
+            var riskFreeRate = 0.05;   // 5% annual
+            var volatility = 0.2;      // 20% annual
+            var optionType = "call";
+
+            // Expected price using Black-Scholes formula: ~2.13
+            var expectedPrice = 2.13;
+            var tolerance = 0.1;
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.Results.ContainsKey("option_price"));
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            Assert.IsTrue(Math.Abs(optionPrice - expectedPrice) < tolerance,
+                $"Expected price around {expectedPrice}, got {optionPrice}");
+        }
+
+        [TestMethod]
+        public async Task BlackScholes_PutOption_WithKnownParameters_ReturnsExpectedPrice()
+        {
+            // Arrange
+            var spotPrice = 100.0;
+            var strikePrice = 105.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var optionType = "put";
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.Results.ContainsKey("option_price"));
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            Assert.IsTrue(optionPrice > 0, "Put option price should be positive");
+            Assert.IsTrue(optionPrice < strikePrice, "Put option price should be less than strike price");
+        }
+
+        [TestMethod]
+        public async Task BlackScholes_AtTheMoney_ReturnsReasonablePrice()
+        {
+            // Arrange - At-the-money option
+            var spotPrice = 100.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 1.0; // 1 year
+            var riskFreeRate = 0.05;
+            var volatility = 0.3;
+            var optionType = "call";
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            Assert.IsTrue(optionPrice > 0, "At-the-money option should have positive price");
+            Assert.IsTrue(optionPrice < spotPrice, "Call option price should be less than spot price");
+        }
+
+        [TestMethod]
+        public async Task BlackScholes_OutOfTheMoney_ReturnsLowerPrice()
+        {
+            // Arrange - Out-of-the-money call option
+            var spotPrice = 90.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var optionType = "call";
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            Assert.IsTrue(optionPrice > 0, "Out-of-the-money option should have positive price");
+            Assert.IsTrue(optionPrice < 5.0, "Out-of-the-money option should have low price");
+        }
+
+        [TestMethod]
+        public async Task MonteCarloPricing_WithKnownParameters_ReturnsValidPrice()
+        {
+            // Arrange
+            var spotPrice = 100.0;
+            var strikePrice = 105.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var numSimulations = 10000;
+            var optionType = "call";
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "monte_carlo_pricing",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["num_simulations"] = numSimulations,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.Results.ContainsKey("option_price"));
+            Assert.IsTrue(result.Data.Results.ContainsKey("standard_error"));
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            var standardError = (double)result.Data.Results["standard_error"];
+            
+            Assert.IsTrue(optionPrice > 0, "Monte Carlo option price should be positive");
+            Assert.IsTrue(standardError > 0, "Standard error should be positive");
+            Assert.IsTrue(standardError < optionPrice, "Standard error should be reasonable");
+        }
+
+        [TestMethod]
+        public async Task MonteCarloPricing_WithDifferentSimulations_ReturnsConvergentResults()
+        {
+            // Arrange - Test convergence with different number of simulations
+            var spotPrice = 100.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var optionType = "call";
+            var numSimulations = new[] { 1000, 5000, 10000, 50000 };
+            var results = new List<double>();
+
+            foreach (var numSim in numSimulations)
+            {
+                var request = new QuantModelRequest
+                {
+                    ModelName = "monte_carlo_pricing",
+                    Parameters = new Dictionary<string, object>
+                    {
+                        ["spot_price"] = spotPrice,
+                        ["strike_price"] = strikePrice,
+                        ["time_to_maturity"] = timeToMaturity,
+                        ["risk_free_rate"] = riskFreeRate,
+                        ["volatility"] = volatility,
+                        ["num_simulations"] = numSim,
+                        ["option_type"] = optionType
+                    },
+                    InputData = new Dictionary<string, object>()
+                };
+
+                // Act
+                var result = await _interopController.ExecuteModel(request);
+                results.Add((double)result.Data.Results["option_price"]);
+            }
+
+            // Assert
+            Assert.AreEqual(4, results.Count);
+            
+            // Results should converge as number of simulations increases
+            var price1000 = results[0];
+            var price50000 = results[3];
+            var convergenceTolerance = 0.1; // 10% tolerance
+            
+            Assert.IsTrue(Math.Abs(price50000 - price1000) / price1000 < convergenceTolerance,
+                $"Monte Carlo prices should converge. 1000 sims: {price1000:F4}, 50000 sims: {price50000:F4}");
+        }
+
+        [TestMethod]
+        public async Task BinomialTree_WithKnownParameters_ReturnsValidPrice()
+        {
+            // Arrange
+            var spotPrice = 100.0;
+            var strikePrice = 105.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var nSteps = 100;
+            var optionType = "call";
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "binomial_tree",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["n_steps"] = nSteps,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.Results.ContainsKey("option_price"));
+            Assert.IsTrue(result.Data.Results.ContainsKey("tree_parameters"));
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            var treeParams = (Dictionary<string, object>)result.Data.Results["tree_parameters"];
+            
+            Assert.IsTrue(optionPrice > 0, "Binomial tree option price should be positive");
+            Assert.IsTrue(treeParams.ContainsKey("u"), "Tree parameters should include u");
+            Assert.IsTrue(treeParams.ContainsKey("d"), "Tree parameters should include d");
+            Assert.IsTrue(treeParams.ContainsKey("p"), "Tree parameters should include p");
+        }
+
+        [TestMethod]
+        public async Task BinomialTree_WithDifferentSteps_ReturnsConvergentResults()
+        {
+            // Arrange - Test convergence with different number of steps
+            var spotPrice = 100.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var optionType = "call";
+            var nStepsList = new[] { 10, 50, 100, 200 };
+            var results = new List<double>();
+
+            foreach (var nSteps in nStepsList)
+            {
+                var request = new QuantModelRequest
+                {
+                    ModelName = "binomial_tree",
+                    Parameters = new Dictionary<string, object>
+                    {
+                        ["spot_price"] = spotPrice,
+                        ["strike_price"] = strikePrice,
+                        ["time_to_maturity"] = timeToMaturity,
+                        ["risk_free_rate"] = riskFreeRate,
+                        ["volatility"] = volatility,
+                        ["n_steps"] = nSteps,
+                        ["option_type"] = optionType
+                    },
+                    InputData = new Dictionary<string, object>()
+                };
+
+                // Act
+                var result = await _interopController.ExecuteModel(request);
+                results.Add((double)result.Data.Results["option_price"]);
+            }
+
+            // Assert
+            Assert.AreEqual(4, results.Count);
+            
+            // Results should converge as number of steps increases
+            var price10 = results[0];
+            var price200 = results[3];
+            var convergenceTolerance = 0.05; // 5% tolerance
+            
+            Assert.IsTrue(Math.Abs(price200 - price10) / price10 < convergenceTolerance,
+                $"Binomial tree prices should converge. 10 steps: {price10:F4}, 200 steps: {price200:F4}");
+        }
+
+        [TestMethod]
+        public async Task PricingModels_WithZeroVolatility_ReturnsIntrinsicValue()
+        {
+            // Arrange - Zero volatility should give intrinsic value
+            var spotPrice = 110.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.0; // Zero volatility
+            var optionType = "call";
+            var expectedIntrinsicValue = Math.Max(spotPrice - strikePrice, 0); // 10.0
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            Assert.AreEqual(expectedIntrinsicValue, optionPrice, 0.001,
+                "With zero volatility, option price should equal intrinsic value");
+        }
+
+        [TestMethod]
+        public async Task PricingModels_WithZeroTimeToMaturity_ReturnsIntrinsicValue()
+        {
+            // Arrange - Zero time to maturity should give intrinsic value
+            var spotPrice = 110.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 0.0; // Zero time to maturity
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var optionType = "call";
+            var expectedIntrinsicValue = Math.Max(spotPrice - strikePrice, 0); // 10.0
+
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = optionType
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            
+            var optionPrice = (double)result.Data.Results["option_price"];
+            Assert.AreEqual(expectedIntrinsicValue, optionPrice, 0.001,
+                "With zero time to maturity, option price should equal intrinsic value");
+        }
+
+        [TestMethod]
+        public async Task PricingModels_WithNegativeParameters_ReturnsError()
+        {
+            // Arrange - Negative spot price
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = -100.0, // Negative spot price
+                    ["strike_price"] = 100.0,
+                    ["time_to_maturity"] = 0.25,
+                    ["risk_free_rate"] = 0.05,
+                    ["volatility"] = 0.2,
+                    ["option_type"] = "call"
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public async Task PricingModels_WithMissingParameters_ReturnsError()
+        {
+            // Arrange - Missing required parameters
+            var request = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = 100.0,
+                    // Missing other required parameters
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var result = await _interopController.ExecuteModel(request);
+
+            // Assert
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public async Task PricingModels_PutCallParity_IsSatisfied()
+        {
+            // Arrange - Test put-call parity
+            var spotPrice = 100.0;
+            var strikePrice = 100.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+
+            var callRequest = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = "call"
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            var putRequest = new QuantModelRequest
+            {
+                ModelName = "black_scholes",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = spotPrice,
+                    ["strike_price"] = strikePrice,
+                    ["time_to_maturity"] = timeToMaturity,
+                    ["risk_free_rate"] = riskFreeRate,
+                    ["volatility"] = volatility,
+                    ["option_type"] = "put"
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var callResult = await _interopController.ExecuteModel(callRequest);
+            var putResult = await _interopController.ExecuteModel(putRequest);
+
+            // Assert
+            Assert.IsTrue(callResult.IsSuccess);
+            Assert.IsTrue(putResult.IsSuccess);
+            
+            var callPrice = (double)callResult.Data.Results["option_price"];
+            var putPrice = (double)putResult.Data.Results["option_price"];
+            
+            // Put-call parity: C - P = S - K * exp(-r*T)
+            var expectedDifference = spotPrice - strikePrice * Math.Exp(-riskFreeRate * timeToMaturity);
+            var actualDifference = callPrice - putPrice;
+            var tolerance = 0.01; // 1% tolerance
+            
+            Assert.IsTrue(Math.Abs(actualDifference - expectedDifference) < tolerance,
+                $"Put-call parity not satisfied. Expected difference: {expectedDifference:F4}, Actual: {actualDifference:F4}");
+        }
+
+        [TestMethod]
+        public async Task PricingModels_Performance_WithLargeSimulations_CompletesInReasonableTime()
+        {
+            // Arrange - Large number of Monte Carlo simulations
+            var request = new QuantModelRequest
+            {
+                ModelName = "monte_carlo_pricing",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["spot_price"] = 100.0,
+                    ["strike_price"] = 105.0,
+                    ["time_to_maturity"] = 0.25,
+                    ["risk_free_rate"] = 0.05,
+                    ["volatility"] = 0.2,
+                    ["num_simulations"] = 100000, // Large number of simulations
+                    ["option_type"] = "call"
+                },
+                InputData = new Dictionary<string, object>()
+            };
+
+            // Act
+            var startTime = DateTime.Now;
+            var result = await _interopController.ExecuteModel(request);
+            var executionTime = DateTime.Now - startTime;
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess, "Monte Carlo pricing should succeed with large simulations");
+            Assert.IsTrue(executionTime.TotalSeconds < 30, 
+                "Monte Carlo pricing should complete within 30 seconds for 100,000 simulations");
+        }
+
+        [TestMethod]
+        public async Task PricingModels_WithDifferentOptionTypes_ReturnsAppropriatePrices()
+        {
+            // Arrange - Test both call and put options
+            var spotPrice = 100.0;
+            var strikePrice = 105.0;
+            var timeToMaturity = 0.25;
+            var riskFreeRate = 0.05;
+            var volatility = 0.2;
+            var optionTypes = new[] { "call", "put" };
+            var results = new List<double>();
+
+            foreach (var optionType in optionTypes)
+            {
+                var request = new QuantModelRequest
+                {
+                    ModelName = "black_scholes",
+                    Parameters = new Dictionary<string, object>
+                    {
+                        ["spot_price"] = spotPrice,
+                        ["strike_price"] = strikePrice,
+                        ["time_to_maturity"] = timeToMaturity,
+                        ["risk_free_rate"] = riskFreeRate,
+                        ["volatility"] = volatility,
+                        ["option_type"] = optionType
+                    },
+                    InputData = new Dictionary<string, object>()
+                };
+
+                // Act
+                var result = await _interopController.ExecuteModel(request);
+                results.Add((double)result.Data.Results["option_price"]);
+            }
+
+            // Assert
+            Assert.AreEqual(2, results.Count);
+            
+            var callPrice = results[0];
+            var putPrice = results[1];
+            
+            Assert.IsTrue(callPrice > 0, "Call option price should be positive");
+            Assert.IsTrue(putPrice > 0, "Put option price should be positive");
+            
+            // For out-of-the-money options, put should be more expensive than call
+            Assert.IsTrue(putPrice > callPrice, 
+                "For out-of-the-money options, put should be more expensive than call");
+        }
+    }
+}

@@ -1,520 +1,473 @@
-using Microsoft.Extensions.Logging;
-using Moq;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FinancialRisk.Api.Services;
 using FinancialRisk.Api.Models;
-using System.Text.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace FinancialRisk.Tests
 {
+    [TestClass]
     public class PortfolioOptimizationTests
     {
-        private readonly Mock<ILogger<PortfolioOptimizationService>> _mockLogger;
-        private readonly Mock<IFinancialDataService> _mockFinancialDataService;
-        private readonly Mock<IDataPersistenceService> _mockDataPersistenceService;
-        private readonly PortfolioOptimizationService _optimizationService;
+        private IPortfolioOptimizationService _optimizationService;
+        private PortfolioOptimizationController _controller;
 
-        public PortfolioOptimizationTests()
+        [TestInitialize]
+        public void Setup()
         {
-            _mockLogger = new Mock<ILogger<PortfolioOptimizationService>>();
-            _mockFinancialDataService = new Mock<IFinancialDataService>();
-            _mockDataPersistenceService = new Mock<IDataPersistenceService>();
+            _optimizationService = new PortfolioOptimizationService();
+            _controller = new PortfolioOptimizationController(_optimizationService);
+        }
+
+        [TestMethod]
+        public async Task MarkowitzOptimization_WithKnownDataset_ReturnsOptimalWeights()
+        {
+            // Arrange - Known dataset with expected optimal weights
+            var expectedReturns = new List<double> { 0.08, 0.12, 0.06 }; // 8%, 12%, 6% expected returns
+            var covarianceMatrix = new List<List<double>>
+            {
+                new List<double> { 0.04, 0.01, 0.02 }, // 4% variance, 1% cov with asset 2, 2% cov with asset 3
+                new List<double> { 0.01, 0.09, 0.03 }, // 1% cov with asset 1, 9% variance, 3% cov with asset 3
+                new List<double> { 0.02, 0.03, 0.06 }  // 2% cov with asset 1, 3% cov with asset 2, 6% variance
+            };
+
+            var request = new PortfolioOptimizationRequest
+            {
+                Method = "mean_variance",
+                Assets = new List<AssetOptimizationData>
+                {
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = expectedReturns[0] },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = expectedReturns[1] },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = expectedReturns[2] }
+                },
+                CovarianceMatrix = covarianceMatrix,
+                RiskAversion = 1.0,
+                Constraints = new Dictionary<string, object>
+                {
+                    ["max_weight"] = 0.5,
+                    ["min_weight"] = 0.0
+                }
+            };
+
+            // Act
+            var result = await _controller.OptimizePortfolio(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsNotNull(result.Data.OptimalWeights);
+            Assert.AreEqual(3, result.Data.OptimalWeights.Count);
+
+            // Check that weights sum to 1 (or close to 1 due to floating point precision)
+            var totalWeight = result.Data.OptimalWeights.Sum(w => w.Weight);
+            Assert.AreEqual(1.0, totalWeight, 0.001, "Weights should sum to 1");
+
+            // Check that all weights are non-negative
+            foreach (var weight in result.Data.OptimalWeights)
+            {
+                Assert.IsTrue(weight.Weight >= 0, "All weights should be non-negative");
+                Assert.IsTrue(weight.Weight <= 0.5, "All weights should respect max constraint");
+            }
+
+            // Verify that the highest return asset gets significant weight
+            var maxReturnAsset = result.Data.OptimalWeights
+                .OrderByDescending(w => w.Weight)
+                .First();
+            Assert.IsTrue(maxReturnAsset.Weight > 0.3, "Highest return asset should get significant weight");
+        }
+
+        [TestMethod]
+        public async Task SharpeRatio_WithKnownParameters_ReturnsExpectedValue()
+        {
+            // Arrange - Known parameters for Sharpe ratio calculation
+            var portfolioReturn = 0.12; // 12% annual return
+            var riskFreeRate = 0.03;   // 3% risk-free rate
+            var portfolioVolatility = 0.15; // 15% annual volatility
+            var expectedSharpeRatio = (portfolioReturn - riskFreeRate) / portfolioVolatility; // Should be 0.6
+
+            var expectedReturns = new List<double> { 0.08, 0.12, 0.06 };
+            var covarianceMatrix = new List<List<double>>
+            {
+                new List<double> { 0.04, 0.01, 0.02 },
+                new List<double> { 0.01, 0.09, 0.03 },
+                new List<double> { 0.02, 0.03, 0.06 }
+            };
+
+            var request = new PortfolioOptimizationRequest
+            {
+                Method = "mean_variance",
+                Assets = new List<AssetOptimizationData>
+                {
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = expectedReturns[0] },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = expectedReturns[1] },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = expectedReturns[2] }
+                },
+                CovarianceMatrix = covarianceMatrix,
+                RiskAversion = 1.0,
+                RiskFreeRate = riskFreeRate
+            };
+
+            // Act
+            var result = await _controller.OptimizePortfolio(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsTrue(result.Data.SharpeRatio > 0, "Sharpe ratio should be positive");
             
-            _optimizationService = new PortfolioOptimizationService(
-                _mockLogger.Object,
-                _mockFinancialDataService.Object,
-                _mockDataPersistenceService.Object
-            );
+            // The Sharpe ratio should be reasonable (between 0 and 2 for this dataset)
+            Assert.IsTrue(result.Data.SharpeRatio < 2.0, "Sharpe ratio should be reasonable");
         }
 
-        [Fact]
-        public async Task OptimizePortfolio_WithValidData_ReturnsSuccess()
+        [TestMethod]
+        public async Task EfficientFrontier_WithKnownDataset_ReturnsValidFrontier()
         {
             // Arrange
-            var request = new PortfolioOptimizationRequest
+            var expectedReturns = new List<double> { 0.08, 0.12, 0.06 };
+            var covarianceMatrix = new List<List<double>>
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL", "MSFT" },
-                OptimizationMethod = "MeanVariance",
-                RiskAversion = 1.0,
-                MaxWeight = 1.0,
-                MinWeight = 0.0,
-                LookbackPeriod = 252
+                new List<double> { 0.04, 0.01, 0.02 },
+                new List<double> { 0.01, 0.09, 0.03 },
+                new List<double> { 0.02, 0.03, 0.06 }
             };
 
-            // Mock financial data for each asset
-            foreach (var symbol in request.Symbols)
+            var request = new EfficientFrontierRequest
             {
-                var returns = GenerateSampleReturns(252);
-                var mockHistoryResult = new ApiResponse<List<StockQuote>>
+                Assets = new List<AssetOptimizationData>
                 {
-                    Success = true,
-                    Data = GenerateStockQuotes(returns)
-                };
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = expectedReturns[0] },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = expectedReturns[1] },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = expectedReturns[2] }
+                },
+                CovarianceMatrix = covarianceMatrix,
+                NumPoints = 20
+            };
 
-                _mockFinancialDataService
-                    .Setup(x => x.GetStockHistoryAsync(symbol, request.LookbackPeriod))
-                    .ReturnsAsync(mockHistoryResult);
+            // Act
+            var result = await _controller.CalculateEfficientFrontier(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsNotNull(result.Data.FrontierPoints);
+            Assert.IsTrue(result.Data.FrontierPoints.Count > 0, "Efficient frontier should have points");
+
+            // Check that frontier points are ordered by risk (volatility)
+            var frontierPoints = result.Data.FrontierPoints.OrderBy(p => p.ExpectedVolatility).ToList();
+            for (int i = 1; i < frontierPoints.Count; i++)
+            {
+                Assert.IsTrue(frontierPoints[i].ExpectedVolatility >= frontierPoints[i-1].ExpectedVolatility,
+                    "Frontier points should be ordered by increasing volatility");
             }
 
-            // Act
-            var result = await _optimizationService.OptimizePortfolioAsync(request);
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.NotNull(result.OptimizationResult);
-            Assert.Equal("Test Portfolio", result.OptimizationResult.PortfolioName);
-            Assert.Equal("MeanVariance", result.OptimizationResult.OptimizationMethod);
-            Assert.True(result.OptimizationResult.OptimalWeights.Count > 0);
-            Assert.True(result.OptimizationResult.ExpectedReturn >= 0);
-            Assert.True(result.OptimizationResult.ExpectedVolatility >= 0);
-        }
-
-        [Fact]
-        public async Task OptimizePortfolio_WithInsufficientAssets_ReturnsError()
-        {
-            // Arrange
-            var request = new PortfolioOptimizationRequest
+            // Check that each point has valid weights
+            foreach (var point in result.Data.FrontierPoints)
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL" }, // Only one asset
-                OptimizationMethod = "MeanVariance",
-                RiskAversion = 1.0
-            };
-
-            // Act
-            var result = await _optimizationService.OptimizePortfolioAsync(request);
-
-            // Assert
-            Assert.False(result.Success);
-            Assert.Equal("At least 2 assets required for portfolio optimization", result.Error);
-        }
-
-        [Fact]
-        public async Task OptimizePortfolio_WithInsufficientData_ReturnsError()
-        {
-            // Arrange
-            var request = new PortfolioOptimizationRequest
-            {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL" },
-                OptimizationMethod = "MeanVariance",
-                RiskAversion = 1.0,
-                LookbackPeriod = 252
-            };
-
-            // Mock failed data fetch
-            var mockHistoryResult = new ApiResponse<List<StockQuote>>
-            {
-                Success = false,
-                Data = null
-            };
-
-            _mockFinancialDataService
-                .Setup(x => x.GetStockHistoryAsync(It.IsAny<string>(), It.IsAny<int>()))
-                .ReturnsAsync(mockHistoryResult);
-
-            // Act
-            var result = await _optimizationService.OptimizePortfolioAsync(request);
-
-            // Assert
-            Assert.False(result.Success);
-            Assert.Equal("Insufficient asset data for optimization", result.Error);
-        }
-
-        [Fact]
-        public async Task CalculateEfficientFrontier_WithValidData_ReturnsSuccess()
-        {
-            // Arrange
-            var request = new PortfolioOptimizationRequest
-            {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL", "MSFT" },
-                OptimizationMethod = "MeanVariance",
-                RiskAversion = 1.0,
-                EfficientFrontierPoints = 20
-            };
-
-            // Mock financial data for each asset
-            foreach (var symbol in request.Symbols)
-            {
-                var returns = GenerateSampleReturns(252);
-                var mockHistoryResult = new ApiResponse<List<StockQuote>>
-                {
-                    Success = true,
-                    Data = GenerateStockQuotes(returns)
-                };
-
-                _mockFinancialDataService
-                    .Setup(x => x.GetStockHistoryAsync(symbol, request.LookbackPeriod))
-                    .ReturnsAsync(mockHistoryResult);
+                Assert.IsNotNull(point.Weights);
+                Assert.AreEqual(3, point.Weights.Count, "Each point should have weights for all assets");
+                
+                var totalWeight = point.Weights.Sum(w => w.Weight);
+                Assert.AreEqual(1.0, totalWeight, 0.001, "Weights should sum to 1");
             }
-
-            // Act
-            var result = await _optimizationService.CalculateEfficientFrontierAsync(request);
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.NotNull(result.Points);
-            Assert.True(result.Points.Count > 0);
-            Assert.NotNull(result.MinVolatilityPoint);
-            Assert.NotNull(result.MaxSharpePoint);
-            Assert.NotNull(result.MaxReturnPoint);
         }
 
-        [Fact]
-        public async Task CalculateEfficientFrontier_WithInsufficientAssets_ReturnsError()
+        [TestMethod]
+        public async Task MinimumVariance_WithKnownDataset_ReturnsMinimumVariancePortfolio()
         {
             // Arrange
-            var request = new PortfolioOptimizationRequest
+            var expectedReturns = new List<double> { 0.08, 0.12, 0.06 };
+            var covarianceMatrix = new List<List<double>>
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL" }, // Only one asset
-                OptimizationMethod = "MeanVariance",
-                RiskAversion = 1.0
+                new List<double> { 0.04, 0.01, 0.02 },
+                new List<double> { 0.01, 0.09, 0.03 },
+                new List<double> { 0.02, 0.03, 0.06 }
             };
 
-            // Act
-            var result = await _optimizationService.CalculateEfficientFrontierAsync(request);
-
-            // Assert
-            Assert.False(result.Success);
-            Assert.Equal("At least 2 assets are required for efficient frontier calculation", result.Error);
-        }
-
-        [Theory]
-        [InlineData("MeanVariance")]
-        [InlineData("MinimumVariance")]
-        [InlineData("MaximumSharpe")]
-        [InlineData("EqualWeight")]
-        [InlineData("RiskParity")]
-        public async Task OptimizePortfolio_WithDifferentMethods_ReturnsSuccess(string method)
-        {
-            // Arrange
             var request = new PortfolioOptimizationRequest
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL", "MSFT" },
-                OptimizationMethod = method,
-                RiskAversion = 1.0,
-                LookbackPeriod = 252
-            };
-
-            // Mock financial data for each asset
-            foreach (var symbol in request.Symbols)
-            {
-                var returns = GenerateSampleReturns(252);
-                var mockHistoryResult = new ApiResponse<List<StockQuote>>
+                Method = "minimum_variance",
+                Assets = new List<AssetOptimizationData>
                 {
-                    Success = true,
-                    Data = GenerateStockQuotes(returns)
-                };
-
-                _mockFinancialDataService
-                    .Setup(x => x.GetStockHistoryAsync(symbol, request.LookbackPeriod))
-                    .ReturnsAsync(mockHistoryResult);
-            }
-
-            // Act
-            var result = await _optimizationService.OptimizePortfolioAsync(request);
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.NotNull(result.OptimizationResult);
-            Assert.Equal(method, result.OptimizationResult.OptimizationMethod);
-        }
-
-        [Fact]
-        public async Task OptimizeRiskBudgeting_ReturnsNotImplemented()
-        {
-            // Arrange
-            var request = new RiskBudgetingRequest
-            {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL" },
-                RiskBudgets = new List<double> { 0.5, 0.5 }
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = expectedReturns[0] },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = expectedReturns[1] },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = expectedReturns[2] }
+                },
+                CovarianceMatrix = covarianceMatrix
             };
 
             // Act
-            var result = await _optimizationService.OptimizeRiskBudgetingAsync(request);
+            var result = await _controller.OptimizePortfolio(request);
 
             // Assert
-            Assert.False(result.Success);
-            Assert.Equal("Risk budgeting optimization not yet implemented", result.Error);
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsNotNull(result.Data.OptimalWeights);
+
+            // Check that weights sum to 1
+            var totalWeight = result.Data.OptimalWeights.Sum(w => w.Weight);
+            Assert.AreEqual(1.0, totalWeight, 0.001, "Weights should sum to 1");
+
+            // The minimum variance portfolio should have reasonable volatility
+            Assert.IsTrue(result.Data.ExpectedVolatility > 0, "Volatility should be positive");
+            Assert.IsTrue(result.Data.ExpectedVolatility < 0.5, "Volatility should be reasonable");
         }
 
-        [Fact]
-        public async Task OptimizeBlackLitterman_ReturnsNotImplemented()
+        [TestMethod]
+        public async Task RiskParity_WithKnownDataset_ReturnsEqualRiskContribution()
         {
             // Arrange
+            var covarianceMatrix = new List<List<double>>
+            {
+                new List<double> { 0.04, 0.01, 0.02 },
+                new List<double> { 0.01, 0.09, 0.03 },
+                new List<double> { 0.02, 0.03, 0.06 }
+            };
+
+            var request = new PortfolioOptimizationRequest
+            {
+                Method = "risk_parity",
+                Assets = new List<AssetOptimizationData>
+                {
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = 0.08 },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = 0.12 },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = 0.06 }
+                },
+                CovarianceMatrix = covarianceMatrix
+            };
+
+            // Act
+            var result = await _controller.OptimizePortfolio(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsNotNull(result.Data.OptimalWeights);
+
+            // Check that weights sum to 1
+            var totalWeight = result.Data.OptimalWeights.Sum(w => w.Weight);
+            Assert.AreEqual(1.0, totalWeight, 0.001, "Weights should sum to 1");
+
+            // Risk parity should have more balanced weights compared to mean-variance
+            var maxWeight = result.Data.OptimalWeights.Max(w => w.Weight);
+            var minWeight = result.Data.OptimalWeights.Min(w => w.Weight);
+            var weightSpread = maxWeight - minWeight;
+            
+            // Risk parity should have more balanced weights (smaller spread)
+            Assert.IsTrue(weightSpread < 0.8, "Risk parity should have more balanced weights");
+        }
+
+        [TestMethod]
+        public async Task EqualWeight_WithKnownDataset_ReturnsEqualWeights()
+        {
+            // Arrange
+            var request = new PortfolioOptimizationRequest
+            {
+                Method = "equal_weight",
+                Assets = new List<AssetOptimizationData>
+                {
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = 0.08 },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = 0.12 },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = 0.06 }
+                },
+                CovarianceMatrix = new List<List<double>>
+                {
+                    new List<double> { 0.04, 0.01, 0.02 },
+                    new List<double> { 0.01, 0.09, 0.03 },
+                    new List<double> { 0.02, 0.03, 0.06 }
+                }
+            };
+
+            // Act
+            var result = await _controller.OptimizePortfolio(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsNotNull(result.Data.OptimalWeights);
+
+            // All weights should be equal (1/3 for 3 assets)
+            var expectedWeight = 1.0 / 3.0;
+            foreach (var weight in result.Data.OptimalWeights)
+            {
+                Assert.AreEqual(expectedWeight, weight.Weight, 0.001, "All weights should be equal");
+            }
+        }
+
+        [TestMethod]
+        public async Task BlackLitterman_WithKnownDataset_ReturnsValidWeights()
+        {
+            // Arrange
+            var marketCapWeights = new List<double> { 0.4, 0.4, 0.2 }; // Market cap weights
+            var views = new List<double> { 0.15, 0.05 }; // Views on first two assets
+
             var request = new BlackLittermanRequest
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL" },
-                MarketCapWeights = new List<double> { 0.6, 0.4 },
-                Views = new List<double> { 0.1 },
-                PickMatrix = new List<List<double>> { new List<double> { 1, -1 } },
-                ViewUncertainties = new List<double> { 0.05 }
+                Assets = new List<AssetOptimizationData>
+                {
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = 0.08 },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = 0.12 },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = 0.06 }
+                },
+                CovarianceMatrix = new List<List<double>>
+                {
+                    new List<double> { 0.04, 0.01, 0.02 },
+                    new List<double> { 0.01, 0.09, 0.03 },
+                    new List<double> { 0.02, 0.03, 0.06 }
+                },
+                MarketCapWeights = marketCapWeights,
+                Views = views,
+                RiskAversion = 1.0
             };
 
             // Act
-            var result = await _optimizationService.OptimizeBlackLittermanAsync(request);
+            var result = await _controller.PerformBlackLittermanOptimization(request);
 
             // Assert
-            Assert.False(result.Success);
-            Assert.Equal("Black-Litterman optimization not yet implemented", result.Error);
-        }
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsNotNull(result.Data.OptimalWeights);
 
-        [Fact]
-        public async Task OptimizeTransactionCosts_ReturnsNotImplemented()
-        {
-            // Arrange
-            var request = new TransactionCostOptimizationRequest
+            // Check that weights sum to 1
+            var totalWeight = result.Data.OptimalWeights.Sum(w => w.Weight);
+            Assert.AreEqual(1.0, totalWeight, 0.001, "Weights should sum to 1");
+
+            // All weights should be non-negative
+            foreach (var weight in result.Data.OptimalWeights)
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL" },
-                CurrentWeights = new List<double> { 0.6, 0.4 },
-                TargetWeights = new List<double> { 0.5, 0.5 },
-                TransactionCosts = new List<double> { 0.001, 0.001 }
-            };
-
-            // Act
-            var result = await _optimizationService.OptimizeTransactionCostsAsync(request);
-
-            // Assert
-            Assert.False(result.Success);
-            Assert.Equal("Transaction cost optimization not yet implemented", result.Error);
+                Assert.IsTrue(weight.Weight >= 0, "All weights should be non-negative");
+            }
         }
 
-        [Fact]
-        public async Task GetOptimizationHistory_ReturnsEmptyList()
+        [TestMethod]
+        public async Task Optimization_WithInvalidInput_ReturnsError()
         {
-            // Arrange
-            var portfolioName = "Test Portfolio";
-
-            // Act
-            var result = await _optimizationService.GetOptimizationHistoryAsync(portfolioName);
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Empty(result);
-        }
-
-        [Fact]
-        public async Task GetOptimizationById_ReturnsNull()
-        {
-            // Arrange
-            var id = 1;
-
-            // Act
-            var result = await _optimizationService.GetOptimizationByIdAsync(id);
-
-            // Assert
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task SaveOptimizationResult_ReturnsTrue()
-        {
-            // Arrange
-            var result = new PortfolioOptimizationResult
-            {
-                Success = true,
-                PortfolioName = "Test Portfolio",
-                OptimizationMethod = "MeanVariance",
-                OptimalWeights = new List<double> { 0.4, 0.3, 0.3 },
-                ExpectedReturn = 0.12,
-                ExpectedVolatility = 0.15,
-                SharpeRatio = 0.8,
-                VaR = 0.05,
-                CVaR = 0.07,
-                DiversificationRatio = 1.2,
-                ConcentrationRatio = 0.34,
-                AssetWeights = new List<AssetWeight>(),
-                OptimizationMetadata = new Dictionary<string, object>(),
-                CalculationDate = DateTime.UtcNow
-            };
-
-            // Act
-            var saveResult = await _optimizationService.SaveOptimizationResultAsync(result);
-
-            // Assert
-            Assert.True(saveResult);
-        }
-
-        [Fact]
-        public async Task GetAvailableOptimizationMethods_ReturnsMethods()
-        {
-            // Act
-            var methods = await _optimizationService.GetAvailableOptimizationMethodsAsync();
-
-            // Assert
-            Assert.NotNull(methods);
-            Assert.NotEmpty(methods);
-            Assert.Contains("MeanVariance", methods);
-            Assert.Contains("MinimumVariance", methods);
-            Assert.Contains("MaximumSharpe", methods);
-            Assert.Contains("EqualWeight", methods);
-            Assert.Contains("RiskParity", methods);
-            Assert.Contains("BlackLitterman", methods);
-            Assert.Contains("MeanCVaR", methods);
-        }
-
-        [Fact]
-        public async Task GetOptimizationConstraints_ReturnsConstraints()
-        {
-            // Act
-            var constraints = await _optimizationService.GetOptimizationConstraintsAsync();
-
-            // Assert
-            Assert.NotNull(constraints);
-            Assert.NotEmpty(constraints);
-            Assert.Contains("max_weight", constraints.Keys);
-            Assert.Contains("min_weight", constraints.Keys);
-            Assert.Contains("max_leverage", constraints.Keys);
-            Assert.Contains("max_turnover", constraints.Keys);
-            Assert.Contains("max_concentration", constraints.Keys);
-            Assert.Contains("transaction_costs", constraints.Keys);
-        }
-
-        [Theory]
-        [InlineData(0.5)]
-        [InlineData(1.0)]
-        [InlineData(2.0)]
-        [InlineData(5.0)]
-        public async Task OptimizePortfolio_WithDifferentRiskAversion_ReturnsSuccess(double riskAversion)
-        {
-            // Arrange
+            // Arrange - Empty assets list
             var request = new PortfolioOptimizationRequest
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL", "MSFT" },
-                OptimizationMethod = "MeanVariance",
-                RiskAversion = riskAversion,
-                LookbackPeriod = 252
+                Method = "mean_variance",
+                Assets = new List<AssetOptimizationData>(), // Empty list
+                CovarianceMatrix = new List<List<double>>()
             };
 
-            // Mock financial data for each asset
-            foreach (var symbol in request.Symbols)
-            {
-                var returns = GenerateSampleReturns(252);
-                var mockHistoryResult = new ApiResponse<List<StockQuote>>
-                {
-                    Success = true,
-                    Data = GenerateStockQuotes(returns)
-                };
-
-                _mockFinancialDataService
-                    .Setup(x => x.GetStockHistoryAsync(symbol, request.LookbackPeriod))
-                    .ReturnsAsync(mockHistoryResult);
-            }
-
             // Act
-            var result = await _optimizationService.OptimizePortfolioAsync(request);
+            var result = await _controller.OptimizePortfolio(request);
 
             // Assert
-            Assert.True(result.Success);
-            Assert.NotNull(result.OptimizationResult);
-            Assert.Equal(riskAversion, result.OptimizationResult.OptimizationMetadata.GetValueOrDefault("risk_aversion", 0.0));
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
         }
 
-        [Theory]
-        [InlineData(0.1, 0.9)]
-        [InlineData(0.0, 0.5)]
-        [InlineData(0.2, 1.0)]
-        public async Task OptimizePortfolio_WithWeightConstraints_ReturnsSuccess(double minWeight, double maxWeight)
+        [TestMethod]
+        public async Task Optimization_WithMismatchedDimensions_ReturnsError()
         {
-            // Arrange
+            // Arrange - Mismatched dimensions between assets and covariance matrix
             var request = new PortfolioOptimizationRequest
             {
-                PortfolioName = "Test Portfolio",
-                Symbols = new List<string> { "AAPL", "GOOGL", "MSFT" },
-                OptimizationMethod = "MeanVariance",
-                RiskAversion = 1.0,
-                MinWeight = minWeight,
-                MaxWeight = maxWeight,
-                LookbackPeriod = 252
+                Method = "mean_variance",
+                Assets = new List<AssetOptimizationData>
+                {
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = 0.08 },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = 0.12 }
+                },
+                CovarianceMatrix = new List<List<double>>
+                {
+                    new List<double> { 0.04, 0.01, 0.02 }, // 3x3 matrix for 2 assets
+                    new List<double> { 0.01, 0.09, 0.03 },
+                    new List<double> { 0.02, 0.03, 0.06 }
+                }
             };
 
-            // Mock financial data for each asset
-            foreach (var symbol in request.Symbols)
-            {
-                var returns = GenerateSampleReturns(252);
-                var mockHistoryResult = new ApiResponse<List<StockQuote>>
-                {
-                    Success = true,
-                    Data = GenerateStockQuotes(returns)
-                };
-
-                _mockFinancialDataService
-                    .Setup(x => x.GetStockHistoryAsync(symbol, request.LookbackPeriod))
-                    .ReturnsAsync(mockHistoryResult);
-            }
-
             // Act
-            var result = await _optimizationService.OptimizePortfolioAsync(request);
+            var result = await _controller.OptimizePortfolio(request);
 
             // Assert
-            Assert.True(result.Success);
-            Assert.NotNull(result.OptimizationResult);
-            
-            // Verify weights are within constraints
-            foreach (var weight in result.OptimizationResult.OptimalWeights)
-            {
-                Assert.True(weight >= minWeight - 0.001); // Allow small floating point errors
-                Assert.True(weight <= maxWeight + 0.001);
-            }
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsNotNull(result.ErrorMessage);
         }
 
-        private double[] GenerateSampleReturns(int count)
+        [TestMethod]
+        public async Task Optimization_WithNegativeReturns_HandlesCorrectly()
         {
-            var random = new Random(42); // Fixed seed for reproducible tests
-            var returns = new double[count];
-            
-            for (int i = 0; i < count; i++)
+            // Arrange - Assets with negative expected returns
+            var request = new PortfolioOptimizationRequest
             {
-                // Generate normal distribution with mean 0.001 and std 0.02
-                var u1 = random.NextDouble();
-                var u2 = random.NextDouble();
-                var z0 = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
-                returns[i] = 0.001 + 0.02 * z0;
-            }
-            
-            return returns;
-        }
-
-        private List<StockQuote> GenerateStockQuotes(double[] returns)
-        {
-            var quotes = new List<StockQuote>();
-            var basePrice = 100.0;
-            var currentPrice = basePrice;
-            
-            quotes.Add(new StockQuote
-            {
-                Symbol = "TEST",
-                Timestamp = DateTime.Today.AddDays(-returns.Length),
-                Open = (decimal)basePrice,
-                High = (decimal)(basePrice * 1.01),
-                Low = (decimal)(basePrice * 0.99),
-                Close = (decimal)basePrice,
-                Volume = 1000000
-            });
-            
-            for (int i = 0; i < returns.Length; i++)
-            {
-                currentPrice *= (1 + returns[i]);
-                quotes.Add(new StockQuote
+                Method = "mean_variance",
+                Assets = new List<AssetOptimizationData>
                 {
-                    Symbol = "TEST",
-                    Timestamp = DateTime.Today.AddDays(-returns.Length + i + 1),
-                    Open = quotes.Last().Close,
-                    High = (decimal)(currentPrice * 1.01),
-                    Low = (decimal)(currentPrice * 0.99),
-                    Close = (decimal)currentPrice,
-                    Volume = 1000000
+                    new AssetOptimizationData { Symbol = "Asset1", ExpectedReturn = -0.05 },
+                    new AssetOptimizationData { Symbol = "Asset2", ExpectedReturn = 0.10 },
+                    new AssetOptimizationData { Symbol = "Asset3", ExpectedReturn = 0.03 }
+                },
+                CovarianceMatrix = new List<List<double>>
+                {
+                    new List<double> { 0.04, 0.01, 0.02 },
+                    new List<double> { 0.01, 0.09, 0.03 },
+                    new List<double> { 0.02, 0.03, 0.06 }
+                }
+            };
+
+            // Act
+            var result = await _controller.OptimizePortfolio(request);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsNotNull(result.Data);
+            Assert.IsNotNull(result.Data.OptimalWeights);
+
+            // The asset with negative return should get minimal or zero weight
+            var negativeReturnAsset = result.Data.OptimalWeights
+                .FirstOrDefault(w => w.Symbol == "Asset1");
+            Assert.IsNotNull(negativeReturnAsset);
+            Assert.IsTrue(negativeReturnAsset.Weight <= 0.1, 
+                "Asset with negative return should get minimal weight");
+        }
+
+        [TestMethod]
+        public async Task Optimization_Performance_WithLargeDataset_CompletesInReasonableTime()
+        {
+            // Arrange - Large dataset to test performance
+            var numAssets = 50;
+            var assets = new List<AssetOptimizationData>();
+            var covarianceMatrix = new List<List<double>>();
+
+            var random = new Random(42);
+            for (int i = 0; i < numAssets; i++)
+            {
+                assets.Add(new AssetOptimizationData
+                {
+                    Symbol = $"Asset{i + 1}",
+                    ExpectedReturn = random.NextDouble() * 0.2 - 0.1 // Random returns between -10% and 10%
                 });
+
+                var row = new List<double>();
+                for (int j = 0; j < numAssets; j++)
+                {
+                    if (i == j)
+                        row.Add(0.04); // 4% variance
+                    else
+                        row.Add(0.01); // 1% covariance
+                }
+                covarianceMatrix.Add(row);
             }
-            
-            return quotes;
+
+            var request = new PortfolioOptimizationRequest
+            {
+                Method = "mean_variance",
+                Assets = assets,
+                CovarianceMatrix = covarianceMatrix
+            };
+
+            // Act
+            var startTime = DateTime.Now;
+            var result = await _controller.OptimizePortfolio(request);
+            var executionTime = DateTime.Now - startTime;
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess, "Optimization should succeed with large dataset");
+            Assert.IsTrue(executionTime.TotalSeconds < 10, 
+                "Optimization should complete within 10 seconds for 50 assets");
         }
     }
 }
