@@ -44,6 +44,9 @@ builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, F
 // Register risk metrics service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IRiskMetricsService, FinancialRisk.Api.Services.RiskMetricsService>();
 
+// Register VaR calculation service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, FinancialRisk.Api.Services.VaRCalculationService>();
+
 var app = builder.Build();
 
 // Log configuration to verify environment variables are loaded
@@ -118,6 +121,11 @@ app.MapControllerRoute(
     name: "riskMetrics",
     pattern: "api/riskmetrics/{action}/{id?}",
     defaults: new { controller = "RiskMetrics" });
+
+app.MapControllerRoute(
+    name: "var",
+    pattern: "api/var/{action}/{id?}",
+    defaults: new { controller = "VaR" });
 
 var summaries = new[]
 {

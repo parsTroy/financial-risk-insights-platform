@@ -19,11 +19,18 @@ else()
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 endif()
 
-# Create shared library
+# Create shared libraries
 add_library(RiskCalculations SHARED RiskCalculations.cpp)
+add_library(VaRCalculations SHARED VaRCalculations.cpp)
 
 # Set output directory
 set_target_properties(RiskCalculations PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+)
+
+set_target_properties(VaRCalculations PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
@@ -35,9 +42,17 @@ if(WIN32)
         OUTPUT_NAME "RiskCalculations"
         SUFFIX ".dll"
     )
+    set_target_properties(VaRCalculations PROPERTIES
+        OUTPUT_NAME "VaRCalculations"
+        SUFFIX ".dll"
+    )
 elseif(APPLE)
     set_target_properties(RiskCalculations PROPERTIES
         OUTPUT_NAME "RiskCalculations"
+        SUFFIX ".dylib"
+    )
+    set_target_properties(VaRCalculations PROPERTIES
+        OUTPUT_NAME "VaRCalculations"
         SUFFIX ".dylib"
     )
 else()
@@ -45,14 +60,18 @@ else()
         OUTPUT_NAME "RiskCalculations"
         SUFFIX ".so"
     )
+    set_target_properties(VaRCalculations PROPERTIES
+        OUTPUT_NAME "VaRCalculations"
+        SUFFIX ".so"
+    )
 endif()
 
 # Install targets
-install(TARGETS RiskCalculations
+install(TARGETS RiskCalculations VaRCalculations
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
 
 # Install headers
-install(FILES RiskCalculations.h DESTINATION include)
+install(FILES RiskCalculations.h VaRCalculations.h DESTINATION include)

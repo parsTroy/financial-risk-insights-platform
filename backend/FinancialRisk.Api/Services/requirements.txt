@@ -1,0 +1,34 @@
+# Python requirements for Monte Carlo VaR calculations
+# Financial Risk Insights Platform
+
+# Core scientific computing
+numpy>=1.21.0
+scipy>=1.7.0
+pandas>=1.3.0
+
+# Statistical analysis
+statsmodels>=0.13.0
+arch>=5.0.0  # For GARCH models
+
+# Machine learning (for advanced risk models)
+scikit-learn>=1.0.0
+
+# Data visualization (optional)
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# Performance optimization
+numba>=0.56.0  # JIT compilation for speed
+
+# Additional statistical libraries
+copulae>=0.7.0  # For copula-based risk modeling
+pyvinecopulib>=0.6.0  # Vine copulas
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=3.0.0
+
+# Development tools
+black>=22.0.0
+flake8>=4.0.0
+mypy>=0.950

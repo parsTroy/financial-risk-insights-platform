@@ -1,4 +1,5 @@
 /Users/troyparsons/Developer/portfolio/quant development/financial-risk-insights-platform/backend/FinancialRisk.Api/Services/build/CMakeFiles/RiskCalculations.dir
+/Users/troyparsons/Developer/portfolio/quant development/financial-risk-insights-platform/backend/FinancialRisk.Api/Services/build/CMakeFiles/VaRCalculations.dir
 /Users/troyparsons/Developer/portfolio/quant development/financial-risk-insights-platform/backend/FinancialRisk.Api/Services/build/CMakeFiles/edit_cache.dir
 /Users/troyparsons/Developer/portfolio/quant development/financial-risk-insights-platform/backend/FinancialRisk.Api/Services/build/CMakeFiles/rebuild_cache.dir
 /Users/troyparsons/Developer/portfolio/quant development/financial-risk-insights-platform/backend/FinancialRisk.Api/Services/build/CMakeFiles/list_install_components.dir
