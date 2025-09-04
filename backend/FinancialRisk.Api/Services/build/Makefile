@@ -174,6 +174,19 @@ RiskCalculations/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/RiskCalculations.dir/build.make CMakeFiles/RiskCalculations.dir/build
 .PHONY : RiskCalculations/fast
 
+#=============================================================================
+# Target rules for targets named VaRCalculations
+
+# Build rule for target.
+VaRCalculations: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 VaRCalculations
+.PHONY : VaRCalculations
+
+# fast build rule for target.
+VaRCalculations/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/VaRCalculations.dir/build.make CMakeFiles/VaRCalculations.dir/build
+.PHONY : VaRCalculations/fast
+
 RiskCalculations.o: RiskCalculations.cpp.o
 .PHONY : RiskCalculations.o
 
@@ -198,6 +211,30 @@ RiskCalculations.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/RiskCalculations.dir/build.make CMakeFiles/RiskCalculations.dir/RiskCalculations.cpp.s
 .PHONY : RiskCalculations.cpp.s
 
+VaRCalculations.o: VaRCalculations.cpp.o
+.PHONY : VaRCalculations.o
+
+# target to build an object file
+VaRCalculations.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/VaRCalculations.dir/build.make CMakeFiles/VaRCalculations.dir/VaRCalculations.cpp.o
+.PHONY : VaRCalculations.cpp.o
+
+VaRCalculations.i: VaRCalculations.cpp.i
+.PHONY : VaRCalculations.i
+
+# target to preprocess a source file
+VaRCalculations.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/VaRCalculations.dir/build.make CMakeFiles/VaRCalculations.dir/VaRCalculations.cpp.i
+.PHONY : VaRCalculations.cpp.i
+
+VaRCalculations.s: VaRCalculations.cpp.s
+.PHONY : VaRCalculations.s
+
+# target to generate assembly for a file
+VaRCalculations.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/VaRCalculations.dir/build.make CMakeFiles/VaRCalculations.dir/VaRCalculations.cpp.s
+.PHONY : VaRCalculations.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -211,9 +248,13 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... RiskCalculations"
+	@echo "... VaRCalculations"
 	@echo "... RiskCalculations.o"
 	@echo "... RiskCalculations.i"
 	@echo "... RiskCalculations.s"
+	@echo "... VaRCalculations.o"
+	@echo "... VaRCalculations.i"
+	@echo "... VaRCalculations.s"
 .PHONY : help
 
 
