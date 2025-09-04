@@ -285,7 +285,7 @@
 
             var response = await PortfolioBuilderService.SearchAssetsAsync(request);
             
-            if (response?.IsSuccess == true)
+            if (response?.Success == true)
             {
                 searchResults = response.Data;
             }
@@ -355,7 +355,7 @@
 
             var response = await PortfolioBuilderService.SavePortfolioAsync(request);
             
-            if (response?.IsSuccess == true)
+            if (response?.Success == true)
             {
                 await JSRuntime.InvokeVoidAsync("alert", "Portfolio saved successfully!");
             }

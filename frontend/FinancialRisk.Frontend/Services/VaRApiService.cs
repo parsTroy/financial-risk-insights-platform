@@ -25,7 +25,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error calculating VaR");
                 return new ApiResponse<VaRCalculationResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -43,7 +43,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error calculating Monte Carlo VaR");
                 return new ApiResponse<MonteCarloSimulationResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -61,7 +61,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error calculating portfolio VaR");
                 return new ApiResponse<PortfolioVaRResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -79,7 +79,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error getting available VaR methods");
                 return new ApiResponse<List<string>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -97,7 +97,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error performing stress test");
                 return new ApiResponse<object>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }

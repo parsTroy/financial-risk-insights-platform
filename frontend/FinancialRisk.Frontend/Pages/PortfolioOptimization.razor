@@ -252,7 +252,7 @@
 
             var response = await PortfolioService.OptimizePortfolioAsync(optimizationRequest);
             
-            if (response?.IsSuccess == true && response.Data != null)
+            if (response?.Success == true && response.Data != null)
             {
                 optimizationResult = response.Data;
             }

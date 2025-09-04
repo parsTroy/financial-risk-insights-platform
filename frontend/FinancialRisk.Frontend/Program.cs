@@ -12,7 +12,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var apiSettings = builder.Configuration.GetSection("ApiSettings").Get<ApiConfiguration>() ?? new ApiConfiguration();
 if (string.IsNullOrEmpty(apiSettings.BaseUrl))
 {
-    apiSettings.BaseUrl = "https://localhost:7001/api";
+    apiSettings.BaseUrl = "http://localhost:7001/api";
 }
 
 // Configure HTTP client
@@ -25,7 +25,13 @@ builder.Services.AddHttpClient("ApiClient", client =>
 });
 
 // Register services
-builder.Services.AddScoped<ApiService>();
+builder.Services.AddScoped<ApiService>(provider =>
+{
+    var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("ApiClient");
+    var logger = provider.GetRequiredService<ILogger<ApiService>>();
+    return new ApiService(httpClient, logger);
+});
 builder.Services.AddScoped<VaRApiService>();
 builder.Services.AddScoped<PortfolioApiService>();
 builder.Services.AddScoped<PortfolioBuilderApiService>();

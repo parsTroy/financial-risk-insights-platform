@@ -18,6 +18,18 @@ builder.Configuration.AddEnvironmentVariables();
 builder.Services.AddControllers(); // Add this line to register controllers
 builder.Services.AddOpenApi();
 
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5000", "https://localhost:5000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 // Add Financial Risk Database with EF Core and PostgreSQL
 // Temporarily disabled for testing financial API without database
 // builder.Services.AddFinancialRiskDatabase(builder.Configuration, builder.Environment);
@@ -32,11 +44,11 @@ builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options 
     options.Provider = Environment.GetEnvironmentVariable("FINANCIAL_API_PROVIDER") ?? "AlphaVantage";
 });
 
-// Register HTTP client for financial API (temporarily disabled for testing)
-// builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+// Register HTTP client for financial API
+builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
-// Register financial data service (temporarily disabled for testing)
-// builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+// Register financial data service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
 // Register data persistence service (temporarily disabled for testing)
 // builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
@@ -133,6 +145,9 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseHttpsRedirection();
+
+// Add CORS middleware
+app.UseCors("AllowFrontend");
 
 // Add health check endpoint
 app.MapHealthChecks("/health");

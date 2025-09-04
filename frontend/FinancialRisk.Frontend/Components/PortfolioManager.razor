@@ -246,7 +246,7 @@
 
             var response = await PortfolioService.SavePortfolioAsync(saveRequest);
             
-            if (response?.IsSuccess == true && response.Data != null)
+            if (response?.Success == true && response.Data != null)
             {
                 await OnPortfolioSaved.InvokeAsync();
                 Close();
@@ -284,7 +284,7 @@
 
             var response = await PortfolioService.ListPortfoliosAsync(request);
             
-            if (response?.IsSuccess == true && response.Data != null)
+            if (response?.Success == true && response.Data != null)
             {
                 portfolios = response.Data.Portfolios;
                 totalPages = response.Data.TotalPages;
@@ -338,7 +338,7 @@
             
             var response = await PortfolioService.DeletePortfolioAsync(portfolio.Id);
             
-            if (response?.IsSuccess == true)
+            if (response?.Success == true)
             {
                 await LoadPortfolios();
             }

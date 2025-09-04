@@ -216,7 +216,7 @@
 
             var response = await VaRService.CalculateMonteCarloVaRAsync(simulationRequest);
             
-            if (response?.IsSuccess == true && response.Data != null)
+            if (response?.Success == true && response.Data != null)
             {
                 simulationResult = response.Data;
             }

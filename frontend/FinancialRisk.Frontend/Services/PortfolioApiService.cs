@@ -25,7 +25,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error optimizing portfolio");
                 return new ApiResponse<PortfolioOptimizationResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -43,7 +43,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error calculating efficient frontier");
                 return new ApiResponse<EfficientFrontierResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -61,7 +61,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error performing risk budgeting");
                 return new ApiResponse<RiskBudgetingResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -79,7 +79,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error performing Black-Litterman optimization");
                 return new ApiResponse<BlackLittermanResult>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -97,7 +97,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error getting available optimization methods");
                 return new ApiResponse<List<string>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -115,7 +115,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error getting available constraints");
                 return new ApiResponse<List<string>>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -133,7 +133,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error getting optimization history");
                 return new ApiResponse<object>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }
@@ -151,7 +151,7 @@ namespace FinancialRisk.Frontend.Services
                 _logger.LogError(ex, "Error getting optimization statistics");
                 return new ApiResponse<object>
                 {
-                    IsSuccess = false,
+                    Success = false,
                     ErrorMessage = ex.Message
                 };
             }

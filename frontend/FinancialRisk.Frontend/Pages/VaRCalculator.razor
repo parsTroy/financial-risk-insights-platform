@@ -197,7 +197,7 @@
 
             var response = await VaRService.CalculateVaRAsync(varRequest);
             
-            if (response?.IsSuccess == true && response.Data != null)
+            if (response?.Success == true && response.Data != null)
             {
                 varResult = response.Data;
             }

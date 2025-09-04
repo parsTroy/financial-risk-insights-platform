@@ -46,8 +46,13 @@ namespace FinancialRisk.Frontend.Services
             try
             {
                 _logger.LogInformation("Making POST request to: {Endpoint}", endpoint);
+                _logger.LogInformation("HttpClient BaseAddress: {BaseAddress}", _httpClient.BaseAddress);
                 var response = await _httpClient.PostAsJsonAsync(endpoint, data, _jsonOptions);
                 response.EnsureSuccessStatusCode();
+                
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation("API Response: {Response}", responseContent);
+                
                 return await response.Content.ReadFromJsonAsync<T>(_jsonOptions);
             }
             catch (HttpRequestException ex)
