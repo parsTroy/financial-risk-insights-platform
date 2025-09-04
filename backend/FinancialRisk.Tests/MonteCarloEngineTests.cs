@@ -43,7 +43,7 @@ namespace FinancialRisk.Tests
                 TimeHorizon = 1.0
             };
 
-            var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+            var mockHistoryResult = new ApiResponse<List<StockQuote>>
             {
                 Success = true,
                 Data = GenerateStockQuotes(returns)
@@ -82,7 +82,7 @@ namespace FinancialRisk.Tests
                 TimeHorizon = 1.0
             };
 
-            var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+            var mockHistoryResult = new ApiResponse<List<StockQuote>>
             {
                 Success = false,
                 Data = null
@@ -124,7 +124,7 @@ namespace FinancialRisk.Tests
             foreach (var symbol in symbols)
             {
                 var returns = GenerateSampleReturns(252);
-                var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+                var mockHistoryResult = new ApiResponse<List<StockQuote>>
                 {
                     Success = true,
                     Data = GenerateStockQuotes(returns)
@@ -159,7 +159,7 @@ namespace FinancialRisk.Tests
             var distributions = new[] { "Normal", "TStudent", "GARCH" };
             var results = new Dictionary<string, VaRCalculationResponse>();
 
-            var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+            var mockHistoryResult = new ApiResponse<List<StockQuote>>
             {
                 Success = true,
                 Data = GenerateStockQuotes(returns)
@@ -212,7 +212,7 @@ namespace FinancialRisk.Tests
                 Days = 252
             };
 
-            var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+            var mockHistoryResult = new ApiResponse<List<StockQuote>>
             {
                 Success = true,
                 Data = GenerateStockQuotes(returns)
@@ -243,7 +243,7 @@ namespace FinancialRisk.Tests
             var returns = GenerateSampleReturns(252);
             var days = 252;
 
-            var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+            var mockHistoryResult = new ApiResponse<List<StockQuote>>
             {
                 Success = true,
                 Data = GenerateStockQuotes(returns)
@@ -289,7 +289,7 @@ namespace FinancialRisk.Tests
                 TimeHorizon = 1.0
             };
 
-            var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+            var mockHistoryResult = new ApiResponse<List<StockQuote>>
             {
                 Success = true,
                 Data = GenerateStockQuotes(returns)
@@ -335,7 +335,7 @@ namespace FinancialRisk.Tests
                 Parameters = customParameters
             };
 
-            var mockHistoryResult = new FinancialDataServiceResult<List<StockQuote>>
+            var mockHistoryResult = new ApiResponse<List<StockQuote>>
             {
                 Success = true,
                 Data = GenerateStockQuotes(returns)
@@ -384,11 +384,12 @@ namespace FinancialRisk.Tests
             
             quotes.Add(new StockQuote
             {
-                Date = DateTime.Today.AddDays(-returns.Length),
-                Open = basePrice,
-                High = basePrice * 1.01,
-                Low = basePrice * 0.99,
-                Close = basePrice,
+                Symbol = "TEST",
+                Timestamp = DateTime.Today.AddDays(-returns.Length),
+                Open = (decimal)basePrice,
+                High = (decimal)(basePrice * 1.01),
+                Low = (decimal)(basePrice * 0.99),
+                Close = (decimal)basePrice,
                 Volume = 1000000
             });
             
@@ -397,11 +398,12 @@ namespace FinancialRisk.Tests
                 currentPrice *= (1 + returns[i]);
                 quotes.Add(new StockQuote
                 {
-                    Date = DateTime.Today.AddDays(-returns.Length + i + 1),
+                    Symbol = "TEST",
+                    Timestamp = DateTime.Today.AddDays(-returns.Length + i + 1),
                     Open = quotes.Last().Close,
-                    High = currentPrice * 1.01,
-                    Low = currentPrice * 0.99,
-                    Close = currentPrice,
+                    High = (decimal)(currentPrice * 1.01),
+                    Low = (decimal)(currentPrice * 0.99),
+                    Close = (decimal)currentPrice,
                     Volume = 1000000
                 });
             }

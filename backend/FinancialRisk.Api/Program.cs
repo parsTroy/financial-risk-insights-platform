@@ -47,6 +47,9 @@ builder.Services.AddScoped<FinancialRisk.Api.Services.IRiskMetricsService, Finan
 // Register VaR calculation service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, FinancialRisk.Api.Services.VaRCalculationService>();
 
+// Register portfolio optimization service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
+
 var app = builder.Build();
 
 // Log configuration to verify environment variables are loaded
@@ -126,6 +129,16 @@ app.MapControllerRoute(
     name: "var",
     pattern: "api/var/{action}/{id?}",
     defaults: new { controller = "VaR" });
+
+app.MapControllerRoute(
+    name: "monteCarlo",
+    pattern: "api/montecarlo/{action}/{id?}",
+    defaults: new { controller = "MonteCarlo" });
+
+app.MapControllerRoute(
+    name: "portfolioOptimization",
+    pattern: "api/portfolio/{action}/{id?}",
+    defaults: new { controller = "PortfolioOptimization" });
 
 var summaries = new[]
 {
