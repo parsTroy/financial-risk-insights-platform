@@ -443,4 +443,125 @@ namespace FinancialRisk.Api.Models
         public Dictionary<string, object> OptimizationMetadata { get; set; } = new();
         public DateTime CalculationDate { get; set; }
     }
+
+    // Python/C++ Interop Models
+    public class PythonInteropConfiguration
+    {
+        public string PythonPath { get; set; } = string.Empty;
+        public string PythonExecutable { get; set; } = "python3";
+        public List<string> PythonModules { get; set; } = new();
+        public bool EnableCaching { get; set; } = true;
+        public int CacheTimeoutMinutes { get; set; } = 30;
+        public bool EnablePerformanceMetrics { get; set; } = true;
+        public int MaxConcurrentRequests { get; set; } = 10;
+        public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromMinutes(5);
+    }
+
+    public class QuantModelRequest
+    {
+        public string ModelName { get; set; } = string.Empty;
+        public string ModelType { get; set; } = string.Empty;
+        public Dictionary<string, object> Parameters { get; set; } = new();
+        public Dictionary<string, object> InputData { get; set; } = new();
+        public Dictionary<string, object> Options { get; set; } = new();
+        public string RequestId { get; set; } = Guid.NewGuid().ToString();
+        public DateTime RequestTime { get; set; } = DateTime.UtcNow;
+        public int Priority { get; set; } = 0;
+        public bool EnableCaching { get; set; } = true;
+    }
+
+    public class QuantModelResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string ModelName { get; set; } = string.Empty;
+        public string RequestId { get; set; } = string.Empty;
+        public Dictionary<string, object> Results { get; set; } = new();
+        public Dictionary<string, object> Metadata { get; set; } = new();
+        public TimeSpan ExecutionTime { get; set; }
+        public DateTime CompletionTime { get; set; } = DateTime.UtcNow;
+        public int MemoryUsageMB { get; set; }
+        public string PythonVersion { get; set; } = string.Empty;
+        public List<string> Warnings { get; set; } = new();
+    }
+
+    public class ModelMetadata
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string ModelName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
+        public string Author { get; set; } = string.Empty;
+        public List<string> RequiredParameters { get; set; } = new();
+        public List<string> OptionalParameters { get; set; } = new();
+        public Dictionary<string, object> ParameterTypes { get; set; } = new();
+        public Dictionary<string, object> DefaultValues { get; set; } = new();
+        public List<string> Dependencies { get; set; } = new();
+        public string Category { get; set; } = string.Empty;
+        public List<string> Tags { get; set; } = new();
+        public DateTime LastModified { get; set; }
+        public bool IsDeprecated { get; set; }
+        public string? DeprecationMessage { get; set; }
+    }
+
+    public class PerformanceMetrics
+    {
+        public int TotalRequests { get; set; }
+        public int SuccessfulRequests { get; set; }
+        public int FailedRequests { get; set; }
+        public double SuccessRate { get; set; }
+        public TimeSpan AverageExecutionTime { get; set; }
+        public TimeSpan MinExecutionTime { get; set; }
+        public TimeSpan MaxExecutionTime { get; set; }
+        public long TotalMemoryUsageMB { get; set; }
+        public double AverageMemoryUsageMB { get; set; }
+        public int ActiveConnections { get; set; }
+        public int QueuedRequests { get; set; }
+        public Dictionary<string, int> ModelUsageCounts { get; set; } = new();
+        public Dictionary<string, TimeSpan> ModelAverageExecutionTimes { get; set; } = new();
+        public DateTime LastReset { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ModelExecutionRequest
+    {
+        public string ModelName { get; set; } = string.Empty;
+        public Dictionary<string, object> Parameters { get; set; } = new();
+        public Dictionary<string, object> InputData { get; set; } = new();
+        public bool EnableCaching { get; set; } = true;
+        public int Priority { get; set; } = 0;
+        public TimeSpan? Timeout { get; set; }
+    }
+
+    public class ModelExecutionResponse
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public QuantModelResult? Result { get; set; }
+        public string RequestId { get; set; } = string.Empty;
+        public DateTime RequestTime { get; set; }
+        public DateTime ResponseTime { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ModelRegistry
+    {
+        public List<ModelMetadata> Models { get; set; } = new();
+        public Dictionary<string, List<string>> Categories { get; set; } = new();
+        public Dictionary<string, List<string>> Tags { get; set; } = new();
+        public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+        public int TotalModels { get; set; }
+        public int ActiveModels { get; set; }
+        public int DeprecatedModels { get; set; }
+    }
+
+    public class InteropHealthCheck
+    {
+        public bool IsHealthy { get; set; }
+        public string PythonVersion { get; set; } = string.Empty;
+        public List<string> AvailableModules { get; set; } = new();
+        public List<string> MissingModules { get; set; } = new();
+        public PerformanceMetrics Performance { get; set; } = new();
+        public DateTime CheckTime { get; set; } = DateTime.UtcNow;
+        public string? Error { get; set; }
+    }
 }
