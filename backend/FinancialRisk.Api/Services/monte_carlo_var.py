@@ -498,26 +498,81 @@ def calculate_portfolio_var_cvar_monte_carlo(
         asset_returns, weights, confidence_levels, num_simulations, distribution_enum
     )
 
+def main():
+    """Command line interface for C# integration"""
+    import sys
+    import json
+    
+    if len(sys.argv) < 3:
+        print(json.dumps({"error": "Insufficient arguments. Usage: python monte_carlo_var.py <symbol> <returns_json> [distribution_type] [num_simulations]"}))
+        return
+    
+    try:
+        symbol = sys.argv[1]
+        returns_json = sys.argv[2]
+        distribution_type = sys.argv[3] if len(sys.argv) > 3 else "normal"
+        num_simulations = int(sys.argv[4]) if len(sys.argv) > 4 else 10000
+        
+        # Parse returns data
+        returns_data = json.loads(returns_json)
+        returns_array = np.array(returns_data)
+        
+        # Calculate VaR using Monte Carlo simulation
+        result = calculate_var_cvar_monte_carlo(
+            returns_array,
+            confidence_levels=[0.95, 0.99],
+            num_simulations=num_simulations,
+            distribution=distribution_type
+        )
+        
+        # Convert to dictionary for JSON output
+        output = {
+            "success": True,
+            "var_95": result.var_95,
+            "var_99": result.var_99,
+            "cvar_95": result.cvar_95,
+            "cvar_99": result.cvar_99,
+            "expected_return": np.mean(returns_array),
+            "volatility": np.std(returns_array, ddof=1),
+            "method": result.method,
+            "sample_size": result.sample_size,
+            "simulation_parameters": result.simulation_parameters
+        }
+        
+        print(json.dumps(output))
+        
+    except json.JSONDecodeError:
+        print(json.dumps({"error": "Invalid JSON format for returns data"}))
+    except ValueError as e:
+        print(json.dumps({"error": f"Invalid parameter: {str(e)}"}))
+    except Exception as e:
+        print(json.dumps({"error": f"Unexpected error: {str(e)}"}))
+
 if __name__ == "__main__":
-    # Example usage
-    print("Monte Carlo VaR Calculator - Example Usage")
-    print("=" * 50)
-    
-    # Generate sample returns data
-    np.random.seed(42)
-    sample_returns = np.random.normal(0.001, 0.02, 1000)  # 1000 days of returns
-    
-    # Calculate VaR using Monte Carlo simulation
-    result = calculate_var_cvar_monte_carlo(
-        sample_returns,
-        confidence_levels=[0.95, 0.99],
-        num_simulations=10000,
-        distribution="normal"
-    )
-    
-    print(f"VaR 95%: {result.var_95:.4f}")
-    print(f"VaR 99%: {result.var_99:.4f}")
-    print(f"CVaR 95%: {result.cvar_95:.4f}")
-    print(f"CVaR 99%: {result.cvar_99:.4f}")
-    print(f"Method: {result.method}")
-    print(f"Sample size: {result.sample_size}")
+    # Check if called from command line with arguments
+    import sys
+    if len(sys.argv) > 1:
+        main()
+    else:
+        # Example usage
+        print("Monte Carlo VaR Calculator - Example Usage")
+        print("=" * 50)
+        
+        # Generate sample returns data
+        np.random.seed(42)
+        sample_returns = np.random.normal(0.001, 0.02, 1000)  # 1000 days of returns
+        
+        # Calculate VaR using Monte Carlo simulation
+        result = calculate_var_cvar_monte_carlo(
+            sample_returns,
+            confidence_levels=[0.95, 0.99],
+            num_simulations=10000,
+            distribution="normal"
+        )
+        
+        print(f"VaR 95%: {result.var_95:.4f}")
+        print(f"VaR 99%: {result.var_99:.4f}")
+        print(f"CVaR 95%: {result.cvar_95:.4f}")
+        print(f"CVaR 99%: {result.cvar_99:.4f}")
+        print(f"Method: {result.method}")
+        print(f"Sample size: {result.sample_size}")
