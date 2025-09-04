@@ -1,0 +1,17 @@
+# Railway Configuration for Backend API
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "dotnet FinancialRisk.Api.dll"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+# Environment variables
+[env]
+ASPNETCORE_ENVIRONMENT = "Production"
+ASPNETCORE_URLS = "http://0.0.0.0:$PORT"
+DOTNET_VERSION = "9.0"
+
+# Database connection will be set by Railway PostgreSQL service
+# ConnectionStrings__DefaultConnection = "Host=${{Postgres.PGHOST}};Port=${{Postgres.PGPORT}};Database=${{Postgres.PGDATABASE}};Username=${{Postgres.PGUSER}};Password=${{Postgres.PGPASSWORD}}"
