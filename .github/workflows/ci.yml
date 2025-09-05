@@ -212,7 +212,7 @@ jobs:
         cd frontend/FinancialRisk.Frontend
         
         # Check that all main pages exist
-        pages=("Home.razor" "VaRCalculator.razor" "MonteCarloSimulation.razor" "PortfolioOptimization.razor" "RiskDashboard.razor")
+        pages=("Home.razor" "VaRCalculator.razor" "MonteCarloSimulation.razor" "PortfolioOptimization.razor" "RiskDashboard.razor" "EfficientFrontier.razor")
         for page in "${pages[@]}"; do
           if [ -f "Pages/$page" ]; then
             echo "✅ $page exists"
@@ -223,7 +223,7 @@ jobs:
         done
         
         # Check that all services exist
-        services=("ApiService.cs" "VaRApiService.cs" "PortfolioApiService.cs" "RiskMetricsApiService.cs" "ApiConfiguration.cs")
+        services=("ApiService.cs" "VaRApiService.cs" "PortfolioApiService.cs" "RiskMetricsApiService.cs" "EfficientFrontierApiService.cs" "ApiConfiguration.cs")
         for service in "${services[@]}"; do
           if [ -f "Services/$service" ]; then
             echo "✅ $service exists"

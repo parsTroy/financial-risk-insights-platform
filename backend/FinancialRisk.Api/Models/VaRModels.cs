@@ -339,6 +339,7 @@ namespace FinancialRisk.Api.Models
         public double ExpectedVolatility { get; set; }
         public double SharpeRatio { get; set; }
         public List<double> Weights { get; set; } = new();
+        public List<AssetWeight> AssetWeights { get; set; } = new();
     }
 
     public class EfficientFrontier
@@ -351,6 +352,8 @@ namespace FinancialRisk.Api.Models
         public EfficientFrontierPoint? MaxReturnPoint { get; set; }
         public Dictionary<string, object> FrontierMetadata { get; set; } = new();
         public DateTime CalculationDate { get; set; }
+        public string PortfolioName { get; set; } = string.Empty;
+        public int NumPoints { get; set; }
     }
 
     public class PortfolioOptimizationResponse
