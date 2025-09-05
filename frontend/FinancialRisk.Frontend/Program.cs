@@ -35,6 +35,7 @@ builder.Services.AddScoped<ApiService>(provider =>
 builder.Services.AddScoped<VaRApiService>();
 builder.Services.AddScoped<PortfolioApiService>();
 builder.Services.AddScoped<PortfolioBuilderApiService>();
+builder.Services.AddScoped<RiskMetricsApiService>();
 
 // Configure JSON serialization
 builder.Services.Configure<JsonSerializerOptions>(options =>
