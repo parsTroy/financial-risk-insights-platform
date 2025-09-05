@@ -1,0 +1,465 @@
+@page "/efficient-frontier"
+@using FinancialRisk.Frontend.Models
+@using FinancialRisk.Frontend.Services
+@inject EfficientFrontierApiService EfficientFrontierService
+@inject ILogger<EfficientFrontier> Logger
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Efficient Frontier</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 mb-4">Efficient Frontier</h1>
+            <p class="lead">Visualize the optimal risk-return trade-off for your portfolio with interactive constraints.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Controls Panel -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Portfolio Assets</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Asset Configuration</label>
+                        <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            @for (int i = 0; i < assets.Count; i++)
+                            {
+                                var index = i;
+                                <div class="row mb-2">
+                                    <div class="col-4">
+                                        <InputText @bind-Value="assets[index].Symbol" 
+                                                 class="form-control form-control-sm" 
+                                                 placeholder="Symbol" />
+                                    </div>
+                                    <div class="col-3">
+                                        <InputNumber @bind-Value="assets[index].ExpectedReturn" 
+                                                   class="form-control form-control-sm" 
+                                                   placeholder="Return" 
+                                                   step="0.001" />
+                                    </div>
+                                    <div class="col-3">
+                                        <InputNumber @bind-Value="assets[index].Volatility" 
+                                                   class="form-control form-control-sm" 
+                                                   placeholder="Volatility" 
+                                                   step="0.001" />
+                                    </div>
+                                    <div class="col-2">
+                                        <button type="button" 
+                                               class="btn btn-outline-danger btn-sm" 
+                                               @onclick="() => RemoveAsset(index)">
+                                            <i class="oi oi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" @onclick="AddAsset">
+                            <i class="oi oi-plus"></i> Add Asset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Constraints -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Interactive Constraints</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="minWeight" class="form-label">Minimum Weight: @(constraints.MinWeight.ToString("P1"))</label>
+                        <input type="range" 
+                               class="form-range" 
+                               id="minWeight" 
+                               min="0" 
+                               max="0.5" 
+                               step="0.01" 
+                               @bind="constraints.MinWeight" 
+                               @onchange="OnConstraintChanged" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="maxWeight" class="form-label">Maximum Weight: @(constraints.MaxWeight.ToString("P1"))</label>
+                        <input type="range" 
+                               class="form-range" 
+                               id="maxWeight" 
+                               min="0.1" 
+                               max="1.0" 
+                               step="0.01" 
+                               @bind="constraints.MaxWeight" 
+                               @onchange="OnConstraintChanged" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="riskAversion" class="form-label">Risk Aversion: @(constraints.RiskAversion.ToString("F1"))</label>
+                        <input type="range" 
+                               class="form-range" 
+                               id="riskAversion" 
+                               min="0.1" 
+                               max="5.0" 
+                               step="0.1" 
+                               @bind="constraints.RiskAversion" 
+                               @onchange="OnConstraintChanged" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="riskFreeRate" class="form-label">Risk-Free Rate: @(constraints.RiskFreeRate.ToString("P2"))</label>
+                        <input type="range" 
+                               class="form-range" 
+                               id="riskFreeRate" 
+                               min="0" 
+                               max="0.1" 
+                               step="0.001" 
+                               @bind="constraints.RiskFreeRate" 
+                               @onchange="OnConstraintChanged" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="numPoints" class="form-label">Frontier Points: @(constraints.NumPoints)</label>
+                        <input type="range" 
+                               class="form-range" 
+                               id="numPoints" 
+                               min="20" 
+                               max="100" 
+                               step="10" 
+                               @bind="constraints.NumPoints" 
+                               @onchange="OnConstraintChanged" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Options -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Display Options</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-2">
+                        <InputCheckbox @bind-Value="constraints.ShowMinVolatility" class="form-check-input" id="showMinVol" />
+                        <label class="form-check-label" for="showMinVol">Show Minimum Volatility Point</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <InputCheckbox @bind-Value="constraints.ShowMaxSharpe" class="form-check-input" id="showMaxSharpe" />
+                        <label class="form-check-label" for="showMaxSharpe">Show Maximum Sharpe Point</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <InputCheckbox @bind-Value="constraints.ShowMaxReturn" class="form-check-input" id="showMaxReturn" />
+                        <label class="form-check-label" for="showMaxReturn">Show Maximum Return Point</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <InputCheckbox @bind-Value="constraints.ShowIndividualAssets" class="form-check-input" id="showAssets" />
+                        <label class="form-check-label" for="showAssets">Show Individual Assets</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <div class="d-grid">
+                <button class="btn btn-primary btn-lg" @onclick="CalculateEfficientFrontier" disabled="@isCalculating">
+                    @if (isCalculating)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Calculating...</span>
+                    }
+                    else
+                    {
+                        <span>Calculate Efficient Frontier</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <!-- Chart Display -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Risk-Return Efficient Frontier</h5>
+                </div>
+                <div class="card-body">
+                    @if (chartData != null && chartData.FrontierPoints.Any())
+                    {
+                        <div class="chart-container" style="height: 500px; position: relative;">
+                            <canvas id="efficientFrontierChart" width="800" height="500"></canvas>
+                        </div>
+
+                        <!-- Legend -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-flex flex-wrap gap-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2" style="width: 20px; height: 20px; background-color: #007bff; border-radius: 3px;"></div>
+                                        <small>Efficient Frontier</small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2" style="width: 20px; height: 20px; background-color: #dc3545; border-radius: 3px;"></div>
+                                        <small>Individual Assets</small>
+                                    </div>
+                                    @if (chartData.MinVolatilityPoint != null)
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2" style="width: 20px; height: 20px; background-color: #28a745; border-radius: 3px;"></div>
+                                            <small>Min Volatility</small>
+                                        </div>
+                                    }
+                                    @if (chartData.MaxSharpePoint != null)
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2" style="width: 20px; height: 20px; background-color: #ffc107; border-radius: 3px;"></div>
+                                            <small>Max Sharpe</small>
+                                        </div>
+                                    }
+                                    @if (chartData.MaxReturnPoint != null)
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2" style="width: 20px; height: 20px; background-color: #17a2b8; border-radius: 3px;"></div>
+                                            <small>Max Return</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Key Metrics -->
+                        <div class="row mt-4">
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Min Volatility</h6>
+                                    <h5 class="text-success mb-0">@(chartData.MinVolatility.ToString("P2"))</h5>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Max Volatility</h6>
+                                    <h5 class="text-warning mb-0">@(chartData.MaxVolatility.ToString("P2"))</h5>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Min Return</h6>
+                                    <h5 class="text-info mb-0">@(chartData.MinReturn.ToString("P2"))</h5>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted mb-1">Max Return</h6>
+                                    <h5 class="text-primary mb-0">@(chartData.MaxReturn.ToString("P2"))</h5>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <h6 class="alert-heading">Calculation Error</h6>
+                            <p class="mb-0">@errorMessage</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-5">
+                            <i class="oi oi-chart-line display-1"></i>
+                            <p class="mt-3">Add assets and click "Calculate Efficient Frontier" to see the chart</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Weights Table -->
+    @if (selectedPoint != null && selectedPoint.Weights != null)
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Portfolio Weights - @selectedPoint.Label</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Weight</th>
+                                        <th>Expected Return</th>
+                                        <th>Volatility</th>
+                                        <th>Risk Contribution</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var weight in selectedPoint.Weights)
+                                    {
+                                        <tr>
+                                            <td><strong>@weight.Symbol</strong></td>
+                                            <td>@(weight.Weight.ToString("P2"))</td>
+                                            <td>@(weight.ExpectedReturn.ToString("P4"))</td>
+                                            <td>@(weight.Volatility.ToString("P4"))</td>
+                                            <td>@((weight.Weight * weight.Volatility).ToString("P2"))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<AssetOptimizationData> assets = new()
+    {
+        new AssetOptimizationData { Symbol = "AAPL", ExpectedReturn = 0.08, Volatility = 0.20 },
+        new AssetOptimizationData { Symbol = "MSFT", ExpectedReturn = 0.10, Volatility = 0.18 },
+        new AssetOptimizationData { Symbol = "GOOGL", ExpectedReturn = 0.12, Volatility = 0.25 },
+        new AssetOptimizationData { Symbol = "AMZN", ExpectedReturn = 0.15, Volatility = 0.30 }
+    };
+
+    private EfficientFrontierConstraints constraints = new()
+    {
+        MinWeight = 0.0,
+        MaxWeight = 1.0,
+        RiskAversion = 1.0,
+        RiskFreeRate = 0.02,
+        NumPoints = 50,
+        ShowMinVolatility = true,
+        ShowMaxSharpe = true,
+        ShowMaxReturn = true,
+        ShowIndividualAssets = true
+    };
+
+    private EfficientFrontierChartData? chartData;
+    private ChartPoint? selectedPoint;
+    private string? errorMessage;
+    private bool isCalculating = false;
+
+    private void AddAsset()
+    {
+        assets.Add(new AssetOptimizationData { Symbol = "", ExpectedReturn = 0, Volatility = 0 });
+    }
+
+    private void RemoveAsset(int index)
+    {
+        if (assets.Count > 1)
+        {
+            assets.RemoveAt(index);
+        }
+    }
+
+    private async Task OnConstraintChanged()
+    {
+        // Recalculate when constraints change
+        if (chartData != null)
+        {
+            await CalculateEfficientFrontier();
+        }
+    }
+
+    private async Task CalculateEfficientFrontier()
+    {
+        try
+        {
+            isCalculating = true;
+            errorMessage = null;
+            chartData = null;
+            selectedPoint = null;
+
+            var validAssets = assets.Where(a => !string.IsNullOrWhiteSpace(a.Symbol) && a.ExpectedReturn > 0 && a.Volatility > 0).ToList();
+            
+            if (validAssets.Count < 2)
+            {
+                errorMessage = "Please add at least 2 valid assets to calculate the efficient frontier.";
+                return;
+            }
+
+            var request = new EfficientFrontierRequest
+            {
+                PortfolioName = "Efficient Frontier Portfolio",
+                Assets = validAssets,
+                CovarianceMatrix = EfficientFrontierService.GenerateCovarianceMatrix(validAssets),
+                EfficientFrontierPoints = constraints.NumPoints,
+                RiskFreeRate = constraints.RiskFreeRate,
+                MaxWeight = constraints.MaxWeight,
+                MinWeight = constraints.MinWeight,
+                RiskAversion = constraints.RiskAversion
+            };
+
+            Logger.LogInformation("Calculating efficient frontier with {Count} assets and {Points} points", 
+                validAssets.Count, constraints.NumPoints);
+
+            var frontier = await EfficientFrontierService.CalculateEfficientFrontierAsync(request);
+            
+            if (frontier != null && frontier.Success)
+            {
+                chartData = EfficientFrontierService.PrepareChartData(frontier, validAssets, constraints);
+                
+                // Select the maximum Sharpe point by default
+                if (chartData.MaxSharpePoint != null)
+                {
+                    selectedPoint = chartData.MaxSharpePoint;
+                }
+                
+                // Update the chart
+                await UpdateChart();
+                
+                Logger.LogInformation("Efficient frontier calculated successfully with {Points} points", 
+                    chartData.FrontierPoints.Count);
+            }
+            else
+            {
+                errorMessage = frontier?.Error ?? "Failed to calculate efficient frontier. Please check your inputs.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error calculating efficient frontier");
+            errorMessage = "An unexpected error occurred while calculating the efficient frontier.";
+        }
+        finally
+        {
+            isCalculating = false;
+        }
+    }
+
+    private async Task UpdateChart()
+    {
+        if (chartData == null) return;
+        
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("efficientFrontierChart.init", "efficientFrontierChart");
+            
+            var specialPoints = new
+            {
+                minVolatility = chartData.MinVolatilityPoint,
+                maxSharpe = chartData.MaxSharpePoint,
+                maxReturn = chartData.MaxReturnPoint
+            };
+            
+            await JSRuntime.InvokeVoidAsync("efficientFrontierChart.updateData", 
+                chartData.FrontierPoints, 
+                chartData.IndividualAssets, 
+                specialPoints);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating chart");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize chart when component first renders
+            await Task.Delay(100); // Small delay to ensure DOM is ready
+            await JSRuntime.InvokeVoidAsync("efficientFrontierChart.init", "efficientFrontierChart");
+        }
+    }
+}
