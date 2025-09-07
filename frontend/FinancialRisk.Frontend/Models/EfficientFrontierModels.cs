@@ -15,6 +15,8 @@ namespace FinancialRisk.Frontend.Models
         public double Weight { get; set; }
         public double ExpectedReturn { get; set; }
         public double Volatility { get; set; }
+        public double RiskContribution { get; set; }
+        public double ReturnContribution { get; set; }
     }
 
     public class EfficientFrontier
@@ -37,6 +39,7 @@ namespace FinancialRisk.Frontend.Models
         public List<AssetOptimizationData> Assets { get; set; } = new();
         public List<List<double>> CovarianceMatrix { get; set; } = new();
         public int EfficientFrontierPoints { get; set; } = 50;
+        public int NumPoints { get; set; } = 50; // Alias for EfficientFrontierPoints
         public double RiskFreeRate { get; set; } = 0.02;
         public int LookbackPeriod { get; set; } = 252;
         public string OptimizationMethod { get; set; } = "mean_variance";

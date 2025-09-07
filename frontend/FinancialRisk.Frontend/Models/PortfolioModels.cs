@@ -29,34 +29,11 @@ namespace FinancialRisk.Frontend.Models
         public double ExecutionTime { get; set; }
     }
 
-    public class AssetWeight
-    {
-        public string Symbol { get; set; } = string.Empty;
-        public double Weight { get; set; }
-        public double ExpectedReturn { get; set; }
-        public double RiskContribution { get; set; }
-    }
-
-    public class EfficientFrontierRequest
-    {
-        public List<AssetOptimizationData> Assets { get; set; } = new();
-        public List<List<double>> CovarianceMatrix { get; set; } = new();
-        public int NumPoints { get; set; } = 50;
-    }
-
     public class EfficientFrontierResult
     {
         public List<EfficientFrontierPoint> FrontierPoints { get; set; } = new();
         public int NumPoints { get; set; }
         public double ExecutionTime { get; set; }
-    }
-
-    public class EfficientFrontierPoint
-    {
-        public double ExpectedReturn { get; set; }
-        public double ExpectedVolatility { get; set; }
-        public double SharpeRatio { get; set; }
-        public List<AssetWeight> Weights { get; set; } = new();
     }
 
     public class RiskBudgetingRequest
