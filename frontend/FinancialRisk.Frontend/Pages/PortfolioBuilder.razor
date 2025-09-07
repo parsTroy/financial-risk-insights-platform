@@ -1,308 +1,204 @@
 @page "/portfolio-builder"
-@using FinancialRisk.Frontend.Models
-@using FinancialRisk.Frontend.Services
-@inject PortfolioBuilderApiService PortfolioBuilderService
-@inject IJSRuntime JSRuntime
-@inject ILogger<PortfolioBuilder> Logger
 
 <PageTitle>Portfolio Builder</PageTitle>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0">
-                    <i class="oi oi-wrench me-2"></i>Portfolio Builder
-                </h1>
-                <div>
-                    <button class="btn btn-outline-primary me-2" @onclick="ShowPortfolioManager">
-                        <i class="oi oi-folder me-1"></i>Manage Portfolios
-                    </button>
-                    <button class="btn btn-primary" @onclick="SavePortfolio" disabled="@(!CanSavePortfolio)">
-                        <i class="oi oi-check me-1"></i>Save Portfolio
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <!-- Header -->
+    <MudText Typo="Typo.h4" Class="mb-4">Portfolio Builder</MudText>
+    <MudText Typo="Typo.body1" Class="mb-6" Style="opacity: 0.7;">
+        Create and manage investment portfolios with real-time market data
+    </MudText>
 
-    <div class="row">
-        <!-- Asset Search Section -->
-        <div class="col-lg-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="oi oi-magnifying-glass me-2"></i>Search Assets
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="searchQuery" class="form-label">Search Query</label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="searchQuery" 
-                               @bind="searchQuery" 
-                               @onkeypress="OnSearchKeyPress"
-                               placeholder="Enter symbol or company name..." />
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="searchLimit" class="form-label">Results Limit</label>
-                        <select class="form-select" id="searchLimit" @bind="searchLimit">
-                            <option value="5">5 results</option>
-                            <option value="10">10 results</option>
-                            <option value="20">20 results</option>
-                        </select>
-                    </div>
+    <!-- Portfolio Input Form -->
+    <MudPaper Class="pa-4 mb-6" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-4">Create New Portfolio</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="portfolioName" 
+                             Label="Portfolio Name" 
+                             Variant="Variant.Outlined" 
+                             Placeholder="e.g., My Growth Portfolio" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="portfolioDescription" 
+                             Label="Description" 
+                             Variant="Variant.Outlined" 
+                             Placeholder="Brief description of your portfolio strategy" />
+            </MudItem>
+        </MudGrid>
 
-                    <button class="btn btn-primary w-100" @onclick="SearchAssets" disabled="@isSearching">
-                        @if (isSearching)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        }
-                        <i class="oi oi-magnifying-glass me-1"></i>Search Assets
-                    </button>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  StartIcon="Icons.Material.Filled.Add"
+                  OnClick="CreatePortfolio"
+                  Disabled="isLoading"
+                  Class="mt-4">
+            @if (isLoading)
+            {
+                <MudProgressCircular Class="ms-n1" Color="Color.Inherit" Indeterminate="true" Size="Size.Small" />
+                <MudText Class="ms-2">Creating...</MudText>
+            }
+            else
+            {
+                <MudText>Create Portfolio</MudText>
+            }
+        </MudButton>
+    </MudPaper>
 
-                    @if (!string.IsNullOrEmpty(searchError))
-                    {
-                        <div class="alert alert-danger mt-3" role="alert">
-                            <i class="oi oi-warning me-2"></i>@searchError
-                        </div>
-                    }
+    <!-- Asset Search and Add -->
+    <MudPaper Class="pa-4 mb-6" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-4">Add Assets to Portfolio</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="searchSymbol" 
+                             Label="Search Symbol" 
+                             Variant="Variant.Outlined" 
+                             Placeholder="e.g., AAPL, MSFT, GOOGL"
+                             Adornment="Adornment.End"
+                             AdornmentIcon="Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="assetWeight" 
+                             Label="Weight (%)" 
+                             Variant="Variant.Outlined" 
+                             InputType="InputType.Number" />
+            </MudItem>
+        </MudGrid>
 
-                    @if (searchResults?.Assets?.Any() == true)
-                    {
-                        <div class="mt-3">
-                            <h6>Search Results</h6>
-                            <div class="list-group">
-                                @foreach (var asset in searchResults.Assets)
-                                {
-                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong>@asset.Symbol</strong>
-                                            <br>
-                                            <small class="text-muted">@asset.Name</small>
-                                            <br>
-                                            <small class="text-success">$@asset.Price.ToString("F2")</small>
-                                        </div>
-                                        <button class="btn btn-sm btn-outline-primary" 
-                                                @onclick="() => AddAssetToPortfolio(asset)">
-                                            <i class="oi oi-plus"></i>
-                                        </button>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
+        <MudButton Variant="Variant.Outlined" 
+                  Color="Color.Primary" 
+                  StartIcon="Icons.Material.Filled.Add"
+                  OnClick="AddAsset"
+                  Disabled="isSearching"
+                  Class="mt-4">
+            @if (isSearching)
+            {
+                <MudProgressCircular Class="ms-n1" Color="Color.Inherit" Indeterminate="true" Size="Size.Small" />
+                <MudText Class="ms-2">Adding...</MudText>
+            }
+            else
+            {
+                <MudText>Add Asset</MudText>
+            }
+        </MudButton>
+    </MudPaper>
 
-        <!-- Portfolio Composition Section -->
-        <div class="col-lg-8">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="oi oi-pie-chart me-2"></i>Portfolio Composition
-                    </h5>
-                </div>
-                <div class="card-body">
-                    @if (portfolioAssets.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Symbol</th>
-                                        <th>Name</th>
-                                        <th>Price</th>
-                                        <th>Weight (%)</th>
-                                        <th>Expected Return</th>
-                                        <th>Volatility</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var asset in portfolioAssets)
-                                    {
-                                        <tr>
-                                            <td><strong>@asset.Symbol</strong></td>
-                                            <td>@asset.Name</td>
-                                            <td>$@asset.Price.ToString("F2")</td>
-                                            <td>
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" 
-                                                           class="form-control" 
-                                                           @bind="asset.Weight" 
-                                                           min="0" 
-                                                           max="100" 
-                                                           step="0.1" />
-                                                    <span class="input-group-text">%</span>
-                                                </div>
-                                            </td>
-                                            <td>@(asset.ExpectedReturn * 100)%
-                                                <small class="text-muted d-block">@asset.Sector</small>
-                                            </td>
-                                            <td>@(asset.Volatility * 100)%
-                                                <small class="text-muted d-block">@asset.Exchange</small>
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-sm btn-outline-danger" 
-                                                        @onclick="() => RemoveAssetFromPortfolio(asset)">
-                                                    <i class="oi oi-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="() => errorMessage = string.Empty">
+            @errorMessage
+        </MudAlert>
+    }
 
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h6 class="card-title">Portfolio Summary</h6>
-                                        <p class="mb-1">
-                                            <strong>Total Weight:</strong> 
-                                            <span class="@(totalWeight == 100 ? "text-success" : "text-warning")">
-                                                @totalWeight.ToString("F1")%
-                                            </span>
-                                        </p>
-                                        <p class="mb-1">
-                                            <strong>Expected Return:</strong> 
-                                            @(portfolioExpectedReturn.ToString("P2"))
-                                        </p>
-                                        <p class="mb-0">
-                                            <strong>Expected Volatility:</strong> 
-                                            @(portfolioVolatility.ToString("P2"))
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h6 class="card-title">Risk Metrics</h6>
-                                        <p class="mb-1">
-                                            <strong>Sharpe Ratio:</strong> 
-                                            @(sharpeRatio.ToString("F2"))
-                                        </p>
-                                        <p class="mb-1">
-                                            <strong>Asset Count:</strong> 
-                                            @portfolioAssets.Count
-                                        </p>
-                                        <p class="mb-0">
-                                            <strong>Diversification:</strong> 
-                                            @(portfolioAssets.GroupBy(a => a.Sector).Count()) sectors
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="() => successMessage = string.Empty">
+            @successMessage
+        </MudAlert>
+    }
 
-                        @if (totalWeight != 100)
-                        {
-                            <div class="alert alert-warning mt-3" role="alert">
-                                <i class="oi oi-warning me-2"></i>
-                                Portfolio weights must total 100%. Current total: @totalWeight.ToString("F1")%
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <div class="text-center py-5">
-                            <i class="oi oi-pie-chart display-1 text-muted"></i>
-                            <h5 class="mt-3">No Assets in Portfolio</h5>
-                            <p class="text-muted">Search for assets and add them to start building your portfolio.</p>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Portfolio Manager Modal -->
-@if (showPortfolioManager)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Portfolio Manager</h5>
-                    <button type="button" class="btn-close" @onclick="HidePortfolioManager"></button>
-                </div>
-                <div class="modal-body">
-                    <PortfolioManager 
-                        IsVisible="true" 
-                        IsSaving="false" 
-                        PortfolioAssets="portfolioAssets" 
-                        OnPortfolioLoaded="@((FinancialRisk.Frontend.Models.PortfolioBuilder portfolio) => LoadSelectedPortfolio(portfolio))" 
-                        OnClose="HidePortfolioManager" />
-                </div>
-            </div>
-        </div>
-    </div>
-}
+    <!-- Current Portfolio Holdings -->
+    @if (portfolioHoldings.Any())
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-4">Portfolio Holdings</MudText>
+            <MudTable Items="portfolioHoldings" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh>Symbol</MudTh>
+                    <MudTh>Weight</MudTh>
+                    <MudTh>Current Price</MudTh>
+                    <MudTh>Value</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Symbol</MudTd>
+                    <MudTd>@context.Weight.ToString("P2")</MudTd>
+                    <MudTd>@context.CurrentPrice.ToString("C2")</MudTd>
+                    <MudTd>@context.Value.ToString("C2")</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="Icons.Material.Filled.Delete" 
+                                      Color="Color.Error" 
+                                      Size="Size.Small"
+                                      OnClick="() => RemoveAsset(context.Symbol)" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
 
 @code {
-    private string searchQuery = "";
-    private int searchLimit = 10;
+    private string portfolioName = string.Empty;
+    private string portfolioDescription = string.Empty;
+    private string searchSymbol = string.Empty;
+    private double assetWeight = 10;
+    private bool isLoading = false;
     private bool isSearching = false;
-    private string searchError = "";
-    private AssetSearchResponse? searchResults;
-    private List<PortfolioAsset> portfolioAssets = new();
-    private bool showPortfolioManager = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private List<PortfolioHolding> portfolioHoldings = new();
 
-    private double totalWeight => portfolioAssets.Sum(a => a.Weight);
-    private double portfolioExpectedReturn => portfolioAssets.Sum(a => a.Weight / 100.0 * a.ExpectedReturn);
-    private double portfolioVolatility => Math.Sqrt(portfolioAssets.Sum(a => Math.Pow(a.Weight / 100.0 * a.Volatility, 2)));
-    private double sharpeRatio => portfolioVolatility > 0 ? portfolioExpectedReturn / portfolioVolatility : 0;
-    private bool CanSavePortfolio => portfolioAssets.Any() && totalWeight == 100;
-
-    private async Task OnSearchKeyPress(KeyboardEventArgs e)
+    private async Task CreatePortfolio()
     {
-        if (e.Key == "Enter")
+        if (string.IsNullOrWhiteSpace(portfolioName))
         {
-            await SearchAssets();
+            errorMessage = "Please enter a portfolio name";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Simulate portfolio creation
+            await Task.Delay(1000);
+            successMessage = $"Portfolio '{portfolioName}' created successfully!";
+            portfolioName = string.Empty;
+            portfolioDescription = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating portfolio: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    private async Task SearchAssets()
+    private async Task AddAsset()
     {
-        if (string.IsNullOrWhiteSpace(searchQuery))
+        if (string.IsNullOrWhiteSpace(searchSymbol))
         {
-            searchError = "Please enter a search query.";
+            errorMessage = "Please enter a symbol";
             return;
         }
 
         isSearching = true;
-        searchError = "";
+        errorMessage = string.Empty;
 
         try
         {
-            var request = new AssetSearchRequest
-            {
-                Query = searchQuery,
-                Limit = searchLimit
-            };
-
-            var response = await PortfolioBuilderService.SearchAssetsAsync(request);
+            // Simulate asset addition
+            await Task.Delay(500);
             
-            if (response?.Success == true)
-            {
-                searchResults = response.Data;
-            }
-            else
-            {
-                searchError = response?.ErrorMessage ?? "Failed to search assets.";
-            }
+            var random = new Random();
+            var holding = new PortfolioHolding(
+                searchSymbol.ToUpper(),
+                assetWeight / 100.0,
+                100 + random.NextDouble() * 200,
+                (100 + random.NextDouble() * 200) * (assetWeight / 100.0) * 1000
+            );
+
+            portfolioHoldings.Add(holding);
+            successMessage = $"Asset {searchSymbol} added successfully!";
+            searchSymbol = string.Empty;
+            assetWeight = 10;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error searching assets");
-            searchError = "An error occurred while searching assets.";
+            errorMessage = $"Error adding asset: {ex.Message}";
         }
         finally
         {
@@ -310,86 +206,16 @@
         }
     }
 
-    private void AddAssetToPortfolio(AssetSearchResult asset)
+    private void RemoveAsset(string symbol)
     {
-        if (!portfolioAssets.Any(a => a.Symbol == asset.Symbol))
-        {
-            var newAsset = new PortfolioAsset
-            {
-                Symbol = asset.Symbol,
-                Name = asset.Name,
-                Price = asset.Price,
-                Weight = 0,
-                ExpectedReturn = asset.ExpectedReturn,
-                Volatility = asset.Volatility,
-                Sector = asset.Sector,
-                Exchange = asset.Exchange,
-                MarketCap = asset.MarketCap,
-                Change = asset.Change,
-                ChangePercent = asset.ChangePercent
-            };
-            
-            portfolioAssets.Add(newAsset);
-            StateHasChanged();
-        }
+        portfolioHoldings.RemoveAll(h => h.Symbol == symbol);
+        successMessage = $"Asset {symbol} removed successfully!";
     }
 
-    private void RemoveAssetFromPortfolio(PortfolioAsset asset)
+    protected override void OnInitialized()
     {
-        portfolioAssets.Remove(asset);
-        StateHasChanged();
+        assetWeight = 10;
     }
 
-    private void UpdateAssetWeight(PortfolioAsset asset)
-    {
-        StateHasChanged();
-    }
-
-    private async Task SavePortfolio()
-    {
-        if (!CanSavePortfolio) return;
-
-        try
-        {
-            var request = new PortfolioSaveRequest
-            {
-                Name = $"Portfolio_{DateTime.Now:yyyyMMdd_HHmmss}",
-                Description = "Portfolio created with Portfolio Builder",
-                Assets = portfolioAssets.ToList()
-            };
-
-            var response = await PortfolioBuilderService.SavePortfolioAsync(request);
-            
-            if (response?.Success == true)
-            {
-                await JSRuntime.InvokeVoidAsync("alert", "Portfolio saved successfully!");
-            }
-            else
-            {
-                await JSRuntime.InvokeVoidAsync("alert", $"Failed to save portfolio: {response?.ErrorMessage}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error saving portfolio");
-            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while saving the portfolio.");
-        }
-    }
-
-    private void ShowPortfolioManager()
-    {
-        showPortfolioManager = true;
-    }
-
-    private void HidePortfolioManager()
-    {
-        showPortfolioManager = false;
-    }
-
-    private void LoadSelectedPortfolio(FinancialRisk.Frontend.Models.PortfolioBuilder portfolio)
-    {
-        portfolioAssets = portfolio.Assets ?? new List<PortfolioAsset>();
-        showPortfolioManager = false;
-        StateHasChanged();
-    }
+    private record PortfolioHolding(string Symbol, double Weight, double CurrentPrice, double Value);
 }

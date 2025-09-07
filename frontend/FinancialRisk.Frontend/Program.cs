@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using FinancialRisk.Frontend;
 using FinancialRisk.Frontend.Services;
 using System.Text.Json;
+using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -10,10 +11,8 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // Configure API settings
 var apiSettings = builder.Configuration.GetSection("ApiSettings").Get<ApiConfiguration>() ?? new ApiConfiguration();
-if (string.IsNullOrEmpty(apiSettings.BaseUrl))
-{
-    apiSettings.BaseUrl = "http://localhost:7001/api";
-}
+// Force the correct URL for local development
+apiSettings.BaseUrl = "http://localhost:7001/api";
 
 // Configure HTTP client
 builder.Services.AddHttpClient("ApiClient", client =>
@@ -37,6 +36,9 @@ builder.Services.AddScoped<PortfolioApiService>();
 builder.Services.AddScoped<PortfolioBuilderApiService>();
 builder.Services.AddScoped<RiskMetricsApiService>();
 builder.Services.AddScoped<EfficientFrontierApiService>();
+
+// Add MudBlazor services
+builder.Services.AddMudServices();
 
 // Configure JSON serialization
 builder.Services.Configure<JsonSerializerOptions>(options =>

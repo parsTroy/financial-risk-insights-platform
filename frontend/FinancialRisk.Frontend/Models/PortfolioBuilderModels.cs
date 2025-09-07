@@ -188,4 +188,12 @@ namespace FinancialRisk.Frontend.Models
         public double Return { get; set; }
         public List<AssetWeight> Weights { get; set; } = new();
     }
+
+    public class PortfolioHolding
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public double Weight { get; set; }
+        public double CurrentPrice { get; set; }
+        public double Value { get; set; }
+    }
 }

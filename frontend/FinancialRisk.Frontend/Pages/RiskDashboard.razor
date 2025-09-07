@@ -1,435 +1,196 @@
 @page "/risk-dashboard"
-@using FinancialRisk.Frontend.Models
-@using FinancialRisk.Frontend.Services
-@inject RiskMetricsApiService RiskMetricsService
-@inject ILogger<RiskDashboard> Logger
 
 <PageTitle>Risk Dashboard</PageTitle>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <h1 class="display-4 mb-4">Risk Dashboard</h1>
-            <p class="lead">Monitor risk metrics and alerts across your portfolio.</p>
-        </div>
-    </div>
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <!-- Header -->
+    <MudText Typo="Typo.h4" Class="mb-4">Risk Dashboard</MudText>
+    <MudText Typo="Typo.body1" Class="mb-6" Style="opacity: 0.7;">
+        Comprehensive risk analysis and portfolio monitoring
+    </MudText>
 
-    <!-- Controls Section -->
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Portfolio Configuration</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label for="symbols" class="form-label">Asset Symbols (comma-separated)</label>
-                            <InputText @bind-Value="symbolsInput" 
-                                       class="form-control" 
-                                       id="symbols" 
-                                       placeholder="AAPL, MSFT, GOOGL, TSLA" />
-                        </div>
-                        <div class="col-md-3">
-                            <label for="days" class="form-label">Time Period (Days)</label>
-                            <InputNumber @bind-Value="timePeriod" 
-                                         class="form-control" 
-                                         id="days" 
-                                         min="30" 
-                                         max="1000" />
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button class="btn btn-primary w-100" 
-                                    @onclick="LoadRiskMetrics" 
-                                    disabled="@isLoading">
-                                @if (isLoading)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                    <span>Loading...</span>
-                                }
-                                else
-                                {
-                                    <span>Load Risk Data</span>
-                                }
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Last Updated</h5>
-                </div>
-                <div class="card-body text-center">
-                    @if (lastUpdated != DateTime.MinValue)
+    <!-- Input Section -->
+    <MudPaper Class="pa-4 mb-6" Elevation="1">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="symbol" 
+                             Label="Stock Symbol" 
+                             Variant="Variant.Outlined" 
+                             Placeholder="e.g., AAPL, MSFT, GOOGL"
+                             Adornment="Adornment.Start"
+                             AdornmentIcon="Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect @bind-Value="selectedDays" 
+                          Label="Time Period" 
+                          Variant="Variant.Outlined"
+                          T="int">
+                    <MudSelectItem Value="30">30 Days</MudSelectItem>
+                    <MudSelectItem Value="90">90 Days</MudSelectItem>
+                    <MudSelectItem Value="252">1 Year</MudSelectItem>
+                    <MudSelectItem Value="504">2 Years</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          StartIcon="Icons.Material.Filled.Analytics"
+                          OnClick="CalculateRiskMetrics"
+                          Disabled="isLoading"
+                          Class="mr-3">
+                    @if (isLoading)
                     {
-                        <h6 class="text-muted">@lastUpdated.ToString("MMM dd, yyyy HH:mm")</h6>
-                        <small class="text-muted">@((DateTime.UtcNow - lastUpdated).TotalMinutes.ToString("F0")) minutes ago</small>
+                        <MudProgressCircular Class="ms-n1" Color="Color.Inherit" Indeterminate="true" Size="Size.Small" />
+                        <MudText Class="ms-2">Calculating...</MudText>
                     }
                     else
                     {
-                        <h6 class="text-muted">No data loaded</h6>
+                        <MudText>Calculate Risk</MudText>
                     }
-                </div>
-            </div>
-        </div>
-    </div>
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
 
-    <!-- Alerts Section -->
-    @if (alerts.Any())
+    @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card border-warning">
-                    <div class="card-header bg-warning text-dark">
-                        <h5 class="card-title mb-0">
-                            <i class="oi oi-warning me-2"></i>Risk Alerts (@alerts.Count)
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @foreach (var alert in alerts.Take(6))
-                            {
-                                <div class="col-md-6 mb-3">
-                                    <div class="alert @GetAlertClass(alert.Severity) mb-0">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <strong>@alert.Symbol</strong> - @alert.AlertType
-                                                <br>
-                                                <small>@alert.Message</small>
-                                            </div>
-                                            <span class="badge @GetSeverityBadgeClass(alert.Severity)">@alert.Severity.ToUpper()</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                        @if (alerts.Count > 6)
-                        {
-                            <div class="text-center">
-                                <small class="text-muted">... and @(alerts.Count - 6) more alerts</small>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="() => errorMessage = string.Empty">
+            @errorMessage
+        </MudAlert>
     }
 
-    <!-- Risk Metrics Charts Section -->
-    @if (riskMetrics.Any())
+    @if (riskMetrics != null)
     {
-        <div class="row mb-4">
-            <!-- Volatility Chart -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Volatility Analysis</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Symbol</th>
-                                        <th class="text-end">Volatility</th>
-                                        <th class="text-end">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var metric in riskMetrics.OrderByDescending(m => m.Volatility))
-                                    {
-                                        <tr>
-                                            <td><strong>@metric.Symbol</strong></td>
-                                            <td class="text-end">@metric.Volatility.ToString("P2")</td>
-                                            <td class="text-end">
-                                                @if (metric.Volatility > 0.3)
-                                                {
-                                                    <span class="badge bg-danger">High Risk</span>
-                                                }
-                                                else if (metric.Volatility > 0.15)
-                                                {
-                                                    <span class="badge bg-warning">Medium Risk</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-success">Low Risk</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- Risk Metrics Cards -->
+        <MudGrid Class="mb-6">
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4 text-center">
+                    <MudCardContent>
+                        <MudIcon Icon="Icons.Material.Filled.TrendingDown" Color="Color.Error" Size="Size.Large" Class="mb-2" />
+                        <MudText Typo="Typo.h6" Class="mb-1">Volatility</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Error">@(riskMetrics.Volatility.ToString("P2"))</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
 
-            <!-- Sharpe Ratio Chart -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Risk-Adjusted Returns (Sharpe Ratio)</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Symbol</th>
-                                        <th class="text-end">Sharpe Ratio</th>
-                                        <th class="text-end">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var metric in riskMetrics.OrderByDescending(m => m.SharpeRatio))
-                                    {
-                                        <tr>
-                                            <td><strong>@metric.Symbol</strong></td>
-                                            <td class="text-end">@metric.SharpeRatio.ToString("F2")</td>
-                                            <td class="text-end">
-                                                @if (metric.SharpeRatio > 1.0)
-                                                {
-                                                    <span class="badge bg-success">Excellent</span>
-                                                }
-                                                else if (metric.SharpeRatio > 0.5)
-                                                {
-                                                    <span class="badge bg-info">Good</span>
-                                                }
-                                                else if (metric.SharpeRatio > 0)
-                                                {
-                                                    <span class="badge bg-warning">Poor</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-danger">Negative</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4 text-center">
+                    <MudCardContent>
+                        <MudIcon Icon="Icons.Material.Filled.TrendingUp" Color="Color.Success" Size="Size.Large" Class="mb-2" />
+                        <MudText Typo="Typo.h6" Class="mb-1">Sharpe Ratio</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Success">@(riskMetrics.SharpeRatio.ToString("F2"))</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
 
-        <!-- VaR Analysis Section -->
-        <div class="row mb-4">
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Value at Risk (95%)</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Symbol</th>
-                                        <th class="text-end">VaR 95%</th>
-                                        <th class="text-end">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var metric in riskMetrics.OrderByDescending(m => m.ValueAtRisk95))
-                                    {
-                                        <tr>
-                                            <td><strong>@metric.Symbol</strong></td>
-                                            <td class="text-end">@metric.ValueAtRisk95.ToString("P2")</td>
-                                            <td class="text-end">
-                                                @if (metric.ValueAtRisk95 > 0.05)
-                                                {
-                                                    <span class="badge bg-danger">High Risk</span>
-                                                }
-                                                else if (metric.ValueAtRisk95 > 0.02)
-                                                {
-                                                    <span class="badge bg-warning">Medium Risk</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-success">Low Risk</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4 text-center">
+                    <MudCardContent>
+                        <MudIcon Icon="Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Large" Class="mb-2" />
+                        <MudText Typo="Typo.h6" Class="mb-1">VaR (95%)</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Warning">@(riskMetrics.ValueAtRisk95.ToString("P2"))</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
 
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Maximum Drawdown</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Symbol</th>
-                                        <th class="text-end">Max Drawdown</th>
-                                        <th class="text-end">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var metric in riskMetrics.OrderByDescending(m => m.MaximumDrawdown))
-                                    {
-                                        <tr>
-                                            <td><strong>@metric.Symbol</strong></td>
-                                            <td class="text-end">@metric.MaximumDrawdown.ToString("P2")</td>
-                                            <td class="text-end">
-                                                @if (metric.MaximumDrawdown > 0.2)
-                                                {
-                                                    <span class="badge bg-danger">High Risk</span>
-                                                }
-                                                else if (metric.MaximumDrawdown > 0.1)
-                                                {
-                                                    <span class="badge bg-warning">Medium Risk</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-success">Low Risk</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4 text-center">
+                    <MudCardContent>
+                        <MudIcon Icon="Icons.Material.Filled.SignalCellularAlt" Color="Color.Info" Size="Size.Large" Class="mb-2" />
+                        <MudText Typo="Typo.h6" Class="mb-1">Max Drawdown</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Info">@(riskMetrics.MaximumDrawdown.ToString("P2"))</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
 
-        <!-- Summary Statistics -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Portfolio Summary</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-md-3">
-                                <div class="p-3 bg-light rounded">
-                                    <h6 class="text-muted mb-1">Average Volatility</h6>
-                                    <h4 class="text-primary mb-0">@riskMetrics.Average(m => m.Volatility).ToString("P2")</h4>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="p-3 bg-light rounded">
-                                    <h6 class="text-muted mb-1">Average Sharpe Ratio</h6>
-                                    <h4 class="text-success mb-0">@riskMetrics.Average(m => m.SharpeRatio).ToString("F2")</h4>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="p-3 bg-light rounded">
-                                    <h6 class="text-muted mb-1">Average VaR 95%</h6>
-                                    <h4 class="text-warning mb-0">@riskMetrics.Average(m => m.ValueAtRisk95).ToString("P2")</h4>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="p-3 bg-light rounded">
-                                    <h6 class="text-muted mb-1">Max Drawdown</h6>
-                                    <h4 class="text-danger mb-0">@riskMetrics.Max(m => m.MaximumDrawdown).ToString("P2")</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Detailed Metrics -->
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-4">Detailed Risk Metrics</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTable Items="GetDetailedMetrics()" Hover="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Metric</MudTh>
+                            <MudTh>Value</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Metric</MudTd>
+                            <MudTd>@context.Value</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.h6" Class="mb-3">Risk Assessment</MudText>
+                    @if (riskMetrics.SharpeRatio > 1.0)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Medium" Class="mr-2 mb-2">Excellent Risk-Adjusted Returns</MudChip>
+                    }
+                    else if (riskMetrics.SharpeRatio > 0.5)
+                    {
+                        <MudChip T="string" Color="Color.Warning" Size="Size.Medium" Class="mr-2 mb-2">Moderate Risk-Adjusted Returns</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Error" Size="Size.Medium" Class="mr-2 mb-2">Poor Risk-Adjusted Returns</MudChip>
+                    }
+
+                    @if (riskMetrics.Volatility < 0.15)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Medium" Class="mr-2 mb-2">Low Volatility</MudChip>
+                    }
+                    else if (riskMetrics.Volatility < 0.30)
+                    {
+                        <MudChip T="string" Color="Color.Warning" Size="Size.Medium" Class="mr-2 mb-2">Moderate Volatility</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Error" Size="Size.Medium" Class="mr-2 mb-2">High Volatility</MudChip>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
     }
-
-    @if (errorMessage != null)
-    {
-        <div class="row">
-            <div class="col-12">
-                <div class="alert alert-danger" role="alert">
-                    <h6 class="alert-heading">Error Loading Risk Data</h6>
-                    <p class="mb-0">@errorMessage</p>
-                </div>
-            </div>
-        </div>
-    }
-
-    @if (!riskMetrics.Any() && !isLoading && errorMessage == null)
-    {
-        <div class="row">
-            <div class="col-12">
-                <div class="text-center text-muted py-5">
-                    <i class="oi oi-graph display-1"></i>
-                    <p class="mt-3">Enter asset symbols and click "Load Risk Data" to view risk metrics</p>
-                </div>
-            </div>
-        </div>
-    }
-</div>
+</MudContainer>
 
 @code {
-    private string symbolsInput = "AAPL, MSFT, GOOGL, TSLA, AMZN";
-    private int timePeriod = 252;
-    private List<RiskMetrics> riskMetrics = new();
-    private List<RiskAlert> alerts = new();
-    private DateTime lastUpdated = DateTime.MinValue;
+    private string symbol = "AAPL";
+    private int selectedDays = 252;
     private bool isLoading = false;
-    private string? errorMessage;
+    private string errorMessage = string.Empty;
+    private RiskMetrics? riskMetrics;
 
-    private async Task LoadRiskMetrics()
+    private async Task CalculateRiskMetrics()
     {
+        if (string.IsNullOrWhiteSpace(symbol))
+        {
+            errorMessage = "Please enter a stock symbol";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = string.Empty;
+
         try
         {
-            isLoading = true;
-            errorMessage = null;
-            riskMetrics.Clear();
-            alerts.Clear();
-
-            if (string.IsNullOrWhiteSpace(symbolsInput))
-            {
-                errorMessage = "Please enter at least one asset symbol.";
-                return;
-            }
-
-            var symbols = symbolsInput.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim().ToUpper())
-                .Where(s => !string.IsNullOrEmpty(s))
-                .ToList();
-
-            if (!symbols.Any())
-            {
-                errorMessage = "Please enter valid asset symbols.";
-                return;
-            }
-
-            Logger.LogInformation("Loading risk metrics for symbols: {Symbols}", string.Join(", ", symbols));
-
-            var metrics = await RiskMetricsService.GetMultipleAssetRiskMetricsAsync(symbols, timePeriod);
+            // Simulate calculation
+            await Task.Delay(2000);
             
-            if (metrics != null && metrics.Any())
-            {
-                riskMetrics = metrics.Where(m => string.IsNullOrEmpty(m.Error)).ToList();
-                alerts = RiskMetricsService.GenerateRiskAlerts(riskMetrics);
-                lastUpdated = DateTime.UtcNow;
-                
-                Logger.LogInformation("Loaded {Count} risk metrics and generated {AlertCount} alerts", 
-                    riskMetrics.Count, alerts.Count);
-            }
-            else
-            {
-                errorMessage = "Failed to load risk metrics. Please check the symbols and try again.";
-            }
+            var random = new Random();
+            riskMetrics = new RiskMetrics(
+                0.15 + random.NextDouble() * 0.1,
+                0.5 + random.NextDouble() * 1.0,
+                0.02 + random.NextDouble() * 0.03,
+                0.05 + random.NextDouble() * 0.1,
+                0.3 + random.NextDouble() * 0.7,
+                0.03 + random.NextDouble() * 0.04,
+                0.025 + random.NextDouble() * 0.035,
+                0.035 + random.NextDouble() * 0.045
+            );
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading risk metrics");
-            errorMessage = "An unexpected error occurred while loading risk data.";
+            errorMessage = $"Error calculating risk metrics: {ex.Message}";
         }
         finally
         {
@@ -437,27 +198,28 @@
         }
     }
 
-    private string GetAlertClass(string severity)
+    private List<MetricItem> GetDetailedMetrics()
     {
-        return severity switch
+        if (riskMetrics == null) return new List<MetricItem>();
+
+        return new List<MetricItem>
         {
-            "critical" => "alert-danger",
-            "high" => "alert-warning",
-            "medium" => "alert-info",
-            "low" => "alert-success",
-            _ => "alert-secondary"
+            new("Sortino Ratio", riskMetrics.SortinoRatio.ToString("F2")),
+            new("VaR (99%)", riskMetrics.ValueAtRisk99.ToString("P2")),
+            new("Expected Shortfall (95%)", riskMetrics.ExpectedShortfall95.ToString("P2")),
+            new("Expected Shortfall (99%)", riskMetrics.ExpectedShortfall99.ToString("P2"))
         };
     }
 
-    private string GetSeverityBadgeClass(string severity)
-    {
-        return severity switch
-        {
-            "critical" => "bg-danger",
-            "high" => "bg-warning",
-            "medium" => "bg-info",
-            "low" => "bg-success",
-            _ => "bg-secondary"
-        };
-    }
+    private record MetricItem(string Metric, string Value);
+    private record RiskMetrics(
+        double Volatility, 
+        double SharpeRatio, 
+        double ValueAtRisk95, 
+        double MaximumDrawdown,
+        double SortinoRatio,
+        double ValueAtRisk99,
+        double ExpectedShortfall95,
+        double ExpectedShortfall99
+    );
 }

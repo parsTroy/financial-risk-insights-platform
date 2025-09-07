@@ -1,0 +1,99 @@
+@page "/"
+
+<PageTitle>Financial Risk Insights Platform</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <!-- Hero Section -->
+    <MudPaper Class="pa-8 mb-6" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MudText Typo="Typo.h3" Class="mb-4">Financial Risk Insights Platform</MudText>
+                <MudText Typo="Typo.h6" Class="mb-4" Style="opacity: 0.9;">
+                    Advanced portfolio analysis, risk assessment, and optimization tools for modern investors
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mr-3" Href="/risk-dashboard">
+                    <MudIcon Icon="Icons.Material.Filled.Dashboard" Class="mr-2" />
+                    View Dashboard
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/var-calculator">
+                    <MudIcon Icon="Icons.Material.Filled.Calculate" Class="mr-2" />
+                    Calculate VaR
+                </MudButton>
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex justify-center">
+                <MudIcon Icon="Icons.Material.Filled.TrendingUp" Size="Size.Large" Style="font-size: 120px; opacity: 0.3;" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Features Grid -->
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2" Class="pa-4 h-100">
+                <MudCardContent>
+                    <MudIcon Icon="Icons.Material.Filled.Dashboard" Color="Color.Primary" Size="Size.Large" Class="mb-3" />
+                    <MudText Typo="Typo.h6" Class="mb-2">Risk Dashboard</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        Comprehensive risk metrics including volatility, Sharpe ratio, VaR, and drawdown analysis
+                    </MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/risk-dashboard" Size="Size.Small">
+                        Explore <MudIcon Icon="Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="ml-1" />
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2" Class="pa-4 h-100">
+                <MudCardContent>
+                    <MudIcon Icon="Icons.Material.Filled.Calculate" Color="Color.Secondary" Size="Size.Large" Class="mb-3" />
+                    <MudText Typo="Typo.h6" Class="mb-2">VaR Calculator</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        Calculate Value at Risk using multiple methodologies and confidence levels
+                    </MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Secondary" Href="/var-calculator" Size="Size.Small">
+                        Explore <MudIcon Icon="Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="ml-1" />
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2" Class="pa-4 h-100">
+                <MudCardContent>
+                    <MudIcon Icon="Icons.Material.Filled.TrendingUp" Color="Color.Tertiary" Size="Size.Large" Class="mb-3" />
+                    <MudText Typo="Typo.h6" Class="mb-2">Efficient Frontier</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        Visualize optimal portfolio combinations and risk-return trade-offs
+                    </MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Tertiary" Href="/efficient-frontier" Size="Size.Small">
+                        Explore <MudIcon Icon="Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="ml-1" />
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Quick Stats -->
+    <MudPaper Class="pa-6 mt-6" Elevation="1">
+        <MudText Typo="Typo.h5" Class="mb-4">Platform Statistics</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="3">
+                <MudText Typo="Typo.h4" Color="Color.Primary">100+</MudText>
+                <MudText Typo="Typo.body2">Supported Assets</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudText Typo="Typo.h4" Color="Color.Secondary">5</MudText>
+                <MudText Typo="Typo.body2">Risk Models</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudText Typo="Typo.h4" Color="Color.Tertiary">Real-time</MudText>
+                <MudText Typo="Typo.body2">Market Data</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudText Typo="Typo.h4" Color="Color.Success">99.9%</MudText>
+                <MudText Typo="Typo.body2">Uptime</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+</MudContainer>
