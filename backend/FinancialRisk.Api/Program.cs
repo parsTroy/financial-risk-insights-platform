@@ -31,8 +31,7 @@ builder.Services.AddCors(options =>
 });
 
 // Add Financial Risk Database with EF Core and PostgreSQL
-// Temporarily disabled for testing financial API without database
-// builder.Services.AddFinancialRiskDatabase(builder.Configuration, builder.Environment);
+builder.Services.AddFinancialRiskDatabase(builder.Configuration, builder.Environment);
 
 // Configure financial API settings with environment variable support
 builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options =>
@@ -45,19 +44,19 @@ builder.Services.Configure<FinancialRisk.Api.Models.FinancialApiConfig>(options 
 });
 
 // Register HTTP client for financial API
-// builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+builder.Services.AddHttpClient<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
 // Register financial data service
-// builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
+builder.Services.AddScoped<FinancialRisk.Api.Services.IFinancialDataService, FinancialRisk.Api.Services.AlphaVantageService>();
 
-// Register data persistence service (temporarily disabled for testing)
-// builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
+// Register data persistence service
+builder.Services.AddScoped<FinancialRisk.Api.Services.IDataPersistenceService, FinancialRisk.Api.Services.DataPersistenceService>();
 
-// Register risk metrics service (temporarily disabled for testing)
-// builder.Services.AddScoped<FinancialRisk.Api.Services.IRiskMetricsService, FinancialRisk.Api.Services.RiskMetricsService>();
+// Register risk metrics service (using fallback implementation)
+builder.Services.AddScoped<FinancialRisk.Api.Services.IRiskMetricsService, FinancialRisk.Api.Services.RiskMetricsServiceFallback>();
 
-// Register VaR calculation service (temporarily disabled for testing)
-// builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, FinancialRisk.Api.Services.VaRCalculationService>();
+// Register VaR calculation service (using fallback implementation)
+builder.Services.AddScoped<FinancialRisk.Api.Services.IVaRCalculationService, FinancialRisk.Api.Services.VaRCalculationServiceFallback>();
 
 // Register portfolio optimization service
 builder.Services.AddScoped<FinancialRisk.Api.Services.IPortfolioOptimizationService, FinancialRisk.Api.Services.PortfolioOptimizationService>();
@@ -110,8 +109,6 @@ logger.LogInformation("  Connection String: {ConnectionString}",
 // Ensure database is created and seeded (only in non-testing environments)
 if (!builder.Environment.IsEnvironment("Test"))
 {
-    // Temporarily comment out database initialization to test financial API
-    /*
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<FinancialRiskDbContext>();
@@ -134,8 +131,6 @@ if (!builder.Environment.IsEnvironment("Test"))
             throw; // Re-throw to prevent app from starting with database issues
         }
     }
-    */
-    logger.LogInformation("Database initialization temporarily disabled for testing");
 }
 
 // Configure the HTTP request pipeline.

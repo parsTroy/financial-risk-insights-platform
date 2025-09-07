@@ -74,3 +74,10 @@ TECH_STACK.md
 RAILWAY_DEPLOYMENT.md
 GITHUB_PAGES_DEPLOYMENT.md
 .gitignore
+FINAL_STATUS.md
+.gitignore
+QUICK_START.md
+LOCAL_TESTING_GUIDE.md
+TESTING_RESULTS.md
+start-local-testing.sh
+test-endpoints.sh
